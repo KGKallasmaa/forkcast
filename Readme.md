@@ -1,6 +1,6 @@
 # forkcast
 
-AI-powered meal planning web app, built for Indian kitchens. Generate a personalised multi-day meal plan, browse full recipes sourced from real cooking sites, track what's in your pantry, and turn the plan into a shopping checklist with one-click search links to Blinkit, BigBasket and Instamart.
+AI-powered meal planning web app, Generate a personalised multi-day meal plan, browse full recipes sourced from real cooking sites, track what's in your pantry, and turn the plan into a shopping checklist with one-click search links to Blinkit, BigBasket and Instamart.
 
 ## Features
 

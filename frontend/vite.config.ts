@@ -11,6 +11,9 @@ export default defineConfig({
     include: ['react', 'react-dom', 'zustand', 'zustand/middleware'],
   },
   server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
     fs: {
       allow: ['..'],
     },

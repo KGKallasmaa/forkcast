@@ -1,0 +1,8 @@
+{
+  "name": "forkcast",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}

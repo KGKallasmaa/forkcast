@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
-import { enrichRecipes, type RecipeSlot, type EnrichedRecipe } from './tavilyService.js';
+import { enrichRecipes, mapWithLimit, timingLog, type RecipeSlot, type EnrichedRecipe } from './tavilyService.js';
+import { usageTracker } from './usageTracker.js';
 
 // Fail fast with a clear message instead of an obscure error on the first request.
 const apiKey = process.env.GEMINI_API_KEY;
@@ -12,6 +13,10 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.5-flash-lite';
 // Base wait between retries; attempt n waits n x this. (Only lower it when testing.)
 const RETRY_BASE_MS = Number(process.env.GEMINI_RETRY_MS) || 10_000;
+// One Gemini attempt gets this long before it counts as failed. A hung call
+// used to block the whole plan forever; now it fails as a retryable error
+// and goes through the same retry/backoff path as a 429/503.
+const GEMINI_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 180_000;
 
 export interface SlotToGenerate {
   day: string;
@@ -166,36 +171,263 @@ function parseJSON(text: string): unknown {
   }
 }
 
-// Gemini answers 429 when you pass the free tier's rate limit and 503 when the
-// model is overloaded. Both pass, so wait and retry. After a 503 we also switch
-// to the fallback model, which is usually less busy.
+// ── Model chain ─────────────────────────────────────────────────────────────
+// One request is tried against each link in order. On a retryable failure
+// (429, 503, timeout) the next attempt uses the NEXT link, never the same
+// model — a daily-quota 429 is not transient, so it advances immediately
+// instead of retrying the exhausted model. When every link has failed, the
+// call fails fast with the models tried; the chain never cycles back to
+// the start and never keeps retrying into the wall. The Gemini daily quota
+// (20/day per model) resets at midnight PT.
+export type ChainLink =
+  | { provider: 'gemini'; model: string }
+  | { provider: 'groq'; model: string };
+
+// Gemini links, in order. GEMINI_MODELS is a comma-separated list; when it
+// is unset the two existing vars are used (primary, then fallback).
+// Duplicates are dropped, so a primary that equals the fallback (as on
+// Ajey's Mac right now, where both are the lite model) is only tried once.
+const GEMINI_MODELS: string[] = (process.env.GEMINI_MODELS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const geminiModels =
+  GEMINI_MODELS.length > 0
+    ? [...new Set(GEMINI_MODELS)]
+    : [...new Set([GEMINI_MODEL, GEMINI_FALLBACK_MODEL])];
+
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+
+// Build the chain from its parts. Exported so the harness can check the
+// order and the Groq-skip rule without re-importing the module.
+export function buildChain(geminiModels: string[], groqModel: string, groqApiKey?: string): ChainLink[] {
+  const links: ChainLink[] = geminiModels.map((model) => ({ provider: 'gemini', model }));
+  if (groqApiKey) links.push({ provider: 'groq', model: groqModel });
+  return links;
+}
+
+const CHAIN: ChainLink[] = buildChain(geminiModels, GROQ_MODEL, GROQ_API_KEY);
+console.log(`[chain] Model chain: ${CHAIN.map((l) => l.model).join(' → ')}`);
+if (!GROQ_API_KEY) {
+  console.log('[chain] Groq link skipped — GROQ_API_KEY is not set. Set it to add the Groq model as the final backup.');
+}
+
+// Gemini answers 429 when you pass the free tier's rate limit and 503 when
+// the model is overloaded; Groq answers the same codes. Both pass, so wait
+// and advance to the next link. A 400 is fatal — the request itself is bad,
+// so another model would not help (and the lite-model thinkingConfig 400
+// is already handled by thinkingConfigFor, not by switching).
 const RETRYABLE = /\b(429|503)\b|RESOURCE_EXHAUSTED|UNAVAILABLE/;
 const OVERLOADED = /\b503\b|UNAVAILABLE/;
-const MAX_RETRIES = 3;
+const TIMEOUT = /timed out after \d+ms/;
 
-// The one place that talks to Gemini.
-async function callGemini<T>(system: string, contents: string, maxOutputTokens: number): Promise<T> {
-  let model = GEMINI_MODEL;
-  for (let attempt = 0; ; attempt++) {
-    let text: string | undefined;
-    // Only the API call is inside the try, so the error text we test below is
-    // always Gemini's own, never recipe text that happens to contain "429".
-    try {
-      const response = await client.models.generateContent({
+export type FailureKind = 'timeout' | '503' | '429' | 'fatal';
+
+// Classify a failure message from any link in the chain. Exported for the
+// harness.
+export function classifyFailure(message: string): FailureKind {
+  if (TIMEOUT.test(message)) return 'timeout';
+  if (!RETRYABLE.test(message)) return 'fatal';
+  return OVERLOADED.test(message) ? '503' : '429';
+}
+
+// A daily-quota 429: the free tier's per-day request cap for that model
+// (Gemini's message says "per day limit exceeded"). Unlike a per-minute
+// 429, waiting does not help — the model is done until the quota resets.
+export function isDailyQuotaError(message: string): boolean {
+  return /\b429\b/.test(message) && /per day/i.test(message);
+}
+
+// Races a promise against a timer. The loser keeps running in the background
+// (the SDK call has no cancel), but its result is discarded. Exported so the
+// timeout behaviour can be verified without calling the real API.
+export async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`AI call timed out after ${ms}ms (${label})`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// thinkingConfig is only ever sent to full flash models. The *-flash-lite
+// models reject it with 400 INVALID_ARGUMENT — seen live three times on
+// 2026-11-15: twice on the fallback attempt after a 503, and again once
+// the lite model became the primary. The trigger is the model, not the
+// role — so the check is on the model name, not on primary-vs-fallback
+// (the earlier role-based check was wrong and the model switch exposed it).
+export function thinkingConfigFor(model: string, thinkingOff?: boolean) {
+  return thinkingOff && !model.includes('lite')
+    ? { thinkingConfig: { thinkingBudget: 0 } }
+    : {};
+}
+
+// Groq, the final link in the chain. It speaks the OpenAI chat-completions
+// API, so plain fetch is enough — no SDK. response_format json_object asks
+// for JSON; choices[0].message.content is the JSON text, the same shape
+// callGemini returns to its callers, so no caller changes. thinkingConfig
+// is Gemini-only and is never sent here. Exported for the harness (it
+// drives this with a stubbed fetch).
+export async function callGroq(
+  system: string,
+  contents: string,
+  maxOutputTokens: number,
+  model: string,
+  label: string
+): Promise<string> {
+  const response = await withTimeout(
+    fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
         model,
-        contents,
-        config: { systemInstruction: system, maxOutputTokens, responseMimeType: 'application/json' },
-      });
-      text = response.text;
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user', content: contents },
+        ],
+        response_format: { type: 'json_object' },
+        max_tokens: maxOutputTokens,
+      }),
+    }),
+    GEMINI_TIMEOUT_MS,
+    label
+  );
+  if (!response.ok) {
+    // The status code is kept in the message so classifyFailure() can tell
+    // a retryable 429/503 from a fatal 400.
+    const body = await response.text().catch(() => '');
+    throw new Error(`Groq API error ${response.status}: ${body.slice(0, 200)}`);
+  }
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Empty response from Groq');
+  return text;
+}
+
+// One attempt against one chain link. Returns the JSON text. Exported for
+// the harness (it drives the Groq path with a stubbed fetch).
+export async function dispatchLink(
+  link: ChainLink,
+  system: string,
+  contents: string,
+  maxOutputTokens: number,
+  opts: { thinkingOff?: boolean },
+  label: string
+): Promise<string> {
+  // Count every dispatched attempt against the free-tier daily quota — a
+  // retry is a new request, so it counts too. Logged at dispatch, which is
+  // when the provider counts it. NOTE: the tracker's limit
+  // (GEMINI_DAILY_LIMIT, default 20) is the Gemini free-tier number.
+  // Groq's own free-tier cap differs and is not tracked here — Groq
+  // attempts are counted by model name only, and their log line does not
+  // claim the 20/day limit or the midnight-PT reset.
+  const usage = usageTracker.record(link.model);
+  if (link.provider === 'groq') {
+    console.log(`[usage] ${link.model}: ${usage.count} dispatched today (Groq free-tier limit not tracked)`);
+    return callGroq(system, contents, maxOutputTokens, link.model, label);
+  }
+  console.log(`[usage] ${link.model}: ${usage.count}/${usage.limit} today (resets midnight PT)`);
+  const response = await withTimeout(
+    client.models.generateContent({
+      model: link.model,
+      contents,
+      config: {
+        systemInstruction: system,
+        maxOutputTokens,
+        responseMimeType: 'application/json',
+        ...thinkingConfigFor(link.model, opts.thinkingOff),
+      },
+    }),
+    GEMINI_TIMEOUT_MS,
+    label
+  );
+  const text = response.text;
+  if (!text) throw new Error('Empty response from Gemini');
+  return text;
+}
+
+// Try each link in the chain in order, advancing on retryable failures.
+// `dispatch` performs one attempt against one link and returns the JSON
+// text. Exported for the harness (production passes dispatchLink).
+// A 400 (or any non-retryable error) is fatal: it throws immediately
+// without trying the next link. When every link has failed, throws an
+// error naming the models tried — the chain never cycles back to the
+// start and never keeps retrying into the wall.
+export async function attemptChain(
+  links: ChainLink[],
+  dispatch: (link: ChainLink) => Promise<string>,
+  label: string
+): Promise<{ text: string; attempts: number; tried: string[] }> {
+  if (links.length === 0) {
+    throw new Error('Model chain is empty — no Gemini models and no Groq key configured.');
+  }
+  const tried: string[] = [];
+  let lastError: unknown;
+  let dailyQuotaHit = false;
+  for (const [i, link] of links.entries()) {
+    tried.push(link.model);
+    try {
+      const text = await dispatch(link);
+      return { text, attempts: i + 1, tried };
     } catch (err) {
+      lastError = err;
       const message = String(err);
-      if (!RETRYABLE.test(message) || attempt >= MAX_RETRIES) throw err;
-      if (OVERLOADED.test(message)) model = GEMINI_FALLBACK_MODEL;
-      await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_MS * (attempt + 1)));
-      continue;
+      const kind = classifyFailure(message);
+      if (kind === 'fatal') throw err;
+      if (isDailyQuotaError(message)) dailyQuotaHit = true;
+      const next = links[i + 1];
+      if (!next) break;
+      const waitMs = RETRY_BASE_MS * (i + 1);
+      console.log(
+        `[retry] ${label}: attempt ${i + 1} failed (${kind}${isDailyQuotaError(message) ? ', daily quota' : ''}) on ${link.model}, switching to ${next.model}, retrying in ${waitMs}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
-    if (!text) throw new Error('Empty response from Gemini');
+  }
+  throw new Error(
+    `All model links failed (${tried.join(', ')}) after ${tried.length} attempt(s).` +
+      (dailyQuotaHit ? ' A Gemini daily quota was hit; the daily quota resets at midnight PT.' : '') +
+      ` Last error: ${String(lastError).slice(0, 200)}`
+  );
+}
+
+// The one place that talks to the models.
+// `label` is what the [timing]/[retry] logs call this request (e.g.
+// 'day-synthesis Monday'). `thinkingOff` disables the model's reasoning
+// pass (thinkingConfig thinkingBudget 0, supported by the installed SDK) —
+// for the synthesis calls, which mostly format content into JSON, thinking
+// is likely the biggest per-call cost. The planning call keeps thinking on:
+// that is the reasoning-heavy one (allergen/macro checks). The request is
+// tried against the model chain (see attemptChain); callers see the same
+// JSON shape whichever link answers.
+async function callGemini<T>(
+  system: string,
+  contents: string,
+  maxOutputTokens: number,
+  opts: { thinkingOff?: boolean; label?: string } = {}
+): Promise<T> {
+  const label = opts.label ?? 'gemini';
+  const startedAt = Date.now();
+  try {
+    const { text, attempts } = await attemptChain(
+      CHAIN,
+      (link) => dispatchLink(link, system, contents, maxOutputTokens, opts, label),
+      label
+    );
+    timingLog(label, startedAt, ` (attempts: ${attempts})`);
     return parseJSON(text) as T;
+  } catch (err) {
+    console.log(`[timing] ${label}: FAILED — ${String(err).slice(0, 300)}`);
+    throw err;
   }
 }
 
@@ -403,33 +635,42 @@ ${buildRecipeBlocks(enriched)}`;
 
 export async function generateMealPlan(
   req: MealPlanRequest,
-  onProgress: (msg: string) => void = () => {}
+  onProgress: (msg: string) => void = () => {},
+  // Called with each day as soon as its recipes are written, so the client
+  // can render days as they arrive instead of waiting for the whole plan.
+  onDay: (day: PlannedDay) => void = () => {}
 ): Promise<MealPlanResult> {
-  if (req.searchMode === 'training') return generateMealPlanFromTraining(req, onProgress);
+  if (req.searchMode === 'training') return generateMealPlanFromTraining(req, onProgress, onDay);
+  const startedAt = Date.now();
 
   // Phase 1 — Plan which recipes to use
   onProgress('Choosing recipes based on your preferences…');
-  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 3000);
+  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 3000, { label: 'planning' });
   onProgress(`Selected ${slots.length} recipes — searching the web…`);
 
   // Phase 2 — Tavily search + extract for every recipe
+  const enrichStarted = Date.now();
   const enriched = await enrichRecipes(slots, onProgress);
+  timingLog('tavily enrich', enrichStarted);
 
-  // Phase 3 — Write the days one after another. Sequential on purpose: parallel
-  // calls would exceed the free tier's requests-per-minute limit.
+  // Phase 3 — Write the days, three at a time. Three concurrent day calls
+  // stay comfortably under the free tier's requests-per-minute limit (each
+  // call lasts tens of seconds), and callGemini's retries still cover
+  // 429/503. mapWithLimit keeps the returned array in day order; onDay
+  // fires in completion order, which is what the client streams.
   onProgress('Writing your meal plan…');
   const { weekOf, days } = getPlanDates(req.startDate, req.numDays);
-  const mealPlan: PlannedDay[] = [];
-
-  for (const d of days) {
+  let written = 0;
+  const mealPlan = await mapWithLimit(days, 3, async (d) => {
     // Match on the date only: it's unambiguous, while the day-name text comes back from the model.
     const dayEnriched = enriched.filter((r: EnrichedRecipe) => r.date === d.date);
     const meals = await callGemini<DayMeal[]>(
       DAY_SYNTHESIS_SYSTEM,
       buildDaySynthesisMessage(req, d, dayEnriched),
-      8000
+      8000,
+      { thinkingOff: true, label: `day-synthesis ${d.day}` }
     );
-    mealPlan.push({
+    const dayPlan: PlannedDay = {
       day: d.day,
       date: d.date,
       meals: meals.map((meal) => {
@@ -439,10 +680,14 @@ export async function generateMealPlan(
           recipe: { ...meal.recipe, sourceUrl: src?.sourceUrl ?? null, imageUrl: src?.imageUrl ?? null },
         };
       }),
-    });
-    onProgress(`Writing your meal plan… (${mealPlan.length}/${days.length})`);
-  }
+    };
+    written++;
+    onDay(dayPlan);
+    onProgress(`Writing your meal plan… (${written}/${days.length})`);
+    return dayPlan;
+  });
 
+  timingLog('total', startedAt);
   return { weekOf, mealPlan, shoppingList: [] };
 }
 
@@ -483,7 +728,7 @@ export async function regenerateMeals(
 
   // Phase 1 — Plan only the specified slots
   onProgress('Choosing replacement recipes…');
-  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 2000);
+  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 2000, { label: 'regen-planning' });
   onProgress(`Selected ${slots.length} replacement recipe${slots.length === 1 ? '' : 's'} — searching the web…`);
 
   // Phase 2 — Tavily enrich those slots
@@ -494,7 +739,8 @@ export async function regenerateMeals(
   const regenMeals = await callGemini<RegenMeal[]>(
     REGEN_SYNTHESIS_SYSTEM,
     buildRegenSynthesisMessage(req, enriched),
-    8000
+    8000,
+    { thinkingOff: true, label: 'regen-synthesis' }
   );
 
   return regenMeals.map((m) => {
@@ -582,28 +828,40 @@ function stampAiGenerated(recipe: Record<string, unknown>): Record<string, unkno
 
 export async function generateMealPlanFromTraining(
   req: MealPlanRequest,
-  onProgress: (msg: string) => void = () => {}
+  onProgress: (msg: string) => void = () => {},
+  // Called with each day as soon as its recipes are written, so the client
+  // can render days as they arrive instead of waiting for the whole plan.
+  onDay: (day: PlannedDay) => void = () => {}
 ): Promise<MealPlanResult> {
   onProgress('Generating recipes from training knowledge…');
+  const startedAt = Date.now();
   const { weekOf, days } = getPlanDates(req.startDate, req.numDays);
   const pinnedByDay = assignPinnedToDays(req.pinnedRecipes, days);
-  const mealPlan: PlannedDay[] = [];
 
-  // One day at a time to stay under the free tier's requests-per-minute limit.
-  for (const d of days) {
+  // Three at a time, same as the web pipeline: comfortably under the free
+  // tier's requests-per-minute limit, retries still cover 429/503.
+  // mapWithLimit keeps the returned array in day order; onDay fires in
+  // completion order, which is what the client streams.
+  let written = 0;
+  const mealPlan = await mapWithLimit(days, 3, async (d) => {
     const meals = await callGemini<DayMeal[]>(
       TRAINING_DAY_SYSTEM,
       buildTrainingDayMessage(req, d, pinnedByDay.get(d.day) ?? []),
-      8000
+      8000,
+      { thinkingOff: true, label: `day-synthesis ${d.day}` }
     );
-    mealPlan.push({
+    const dayPlan: PlannedDay = {
       day: d.day,
       date: d.date,
       meals: meals.map((meal) => ({ ...meal, recipe: stampAiGenerated(meal.recipe) })),
-    });
-    onProgress(`Generating recipes… (${mealPlan.length}/${days.length})`);
-  }
+    };
+    written++;
+    onDay(dayPlan);
+    onProgress(`Generating recipes… (${written}/${days.length})`);
+    return dayPlan;
+  });
 
+  timingLog('total', startedAt);
   return { weekOf, mealPlan, shoppingList: [] };
 }
 
@@ -627,6 +885,6 @@ export async function regenerateMealsFromTraining(
   if (!req.slotsToGenerate?.length) throw new Error('No slots specified for regeneration');
 
   onProgress('Generating replacement recipes from training knowledge…');
-  const regenMeals = await callGemini<RegenMeal[]>(TRAINING_REGEN_SYSTEM, buildTrainingRegenMessage(req), 8000);
+  const regenMeals = await callGemini<RegenMeal[]>(TRAINING_REGEN_SYSTEM, buildTrainingRegenMessage(req), 8000, { thinkingOff: true, label: 'training-regen-synthesis' });
   return regenMeals.map((m) => ({ ...m, recipe: stampAiGenerated(m.recipe) }));
 }

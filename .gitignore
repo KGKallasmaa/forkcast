@@ -3,3 +3,5 @@ dist
 .env
 .env.local
 *.local
+# Runtime Gemini usage counts (backend/usage.json) — local data, not source.
+backend/usage.json

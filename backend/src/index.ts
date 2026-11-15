@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import mealPlanRouter from './routes/mealPlan.js';
 import { accessRouter, TRUSTED_COOKIE } from './routes/access.js';
+import { usageTracker } from './services/usageTracker.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -101,6 +102,10 @@ app.get('/api/meal-plan/usage', async (req, res) => {
     limit,
     remaining: Math.max(0, limit - used),
     resetAt: info?.resetTime ? info.resetTime.getTime() : null,
+    // Gemini free-tier usage for today (Pacific date): per-model counts
+    // against the 20/day per-model quota. Additive — the fields above are
+    // unchanged.
+    gemini: usageTracker.getToday(),
   });
 });
 

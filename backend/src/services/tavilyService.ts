@@ -30,9 +30,19 @@ export interface EnrichedRecipe extends RecipeSlot {
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
+// ── Timing logs ─────────────────────────────────────────────────────────────
+// Shared [timing] logger (aiService imports it too) so every phase logs in
+// one greppable format: `[timing] <phase>: 12.3s (12341ms)`. A slow run can
+// then be diagnosed from the server log instead of guessed at.
+export function timingLog(label: string, startedAt: number, extra = ''): void {
+  const ms = Date.now() - startedAt;
+  console.log(`[timing] ${label}: ${(ms / 1000).toFixed(1)}s (${ms}ms)${extra}`);
+}
+
 // Like Promise.all(items.map(fn)), but never runs more than `limit` at a time.
-// Results keep the order of `items`.
-async function mapWithLimit<T, R>(
+// Results keep the order of `items`. Exported so the day-synthesis step in
+// aiService can reuse the same bounded parallelism.
+export async function mapWithLimit<T, R>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<R>
@@ -327,6 +337,7 @@ export async function enrichRecipes(
   // Wave 1: find a recipe URL for every slot (a few at a time)
   let searched = 0;
   let failedSearches = 0;
+  const searchStarted = Date.now();
   const urls = await mapWithLimit(slots, SEARCH_CONCURRENCY, async (slot) => {
     let url: string | null = null;
     try {
@@ -338,6 +349,7 @@ export async function enrichRecipes(
     onProgress?.(`Searching recipes… (${++searched}/${total})`);
     return url;
   });
+  timingLog('tavily search', searchStarted, ` (${urls.filter(Boolean).length}/${total} urls, ${failedSearches} failed)`);
 
   // One failed search is fine (that meal falls back to Gemini's own knowledge).
   // But if EVERY search failed, something is wrong with the key, the credits or
@@ -349,6 +361,7 @@ export async function enrichRecipes(
   // Wave 2: download + extract each found page (a few at a time)
   onProgress?.('Retrieving recipe details…');
   let retrieved = 0;
+  const extractStarted = Date.now();
   const extracted = await mapWithLimit(urls, EXTRACT_CONCURRENCY, async (url) => {
     const result = url
       ? await extractRecipeContent(url).catch(() => NOTHING_EXTRACTED)
@@ -356,6 +369,7 @@ export async function enrichRecipes(
     onProgress?.(`Retrieving recipe details… (${++retrieved}/${total})`);
     return result;
   });
+  timingLog('tavily extract', extractStarted);
 
   return slots.map((slot, i) => ({
     ...slot,

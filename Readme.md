@@ -1,13 +1,23 @@
 # forkcast
 
-AI-powered meal planning web app, Generate a personalised multi-day meal plan, browse full recipes sourced from real cooking sites, track what's in your pantry, and turn the plan into a shopping checklist with one-click search links to Blinkit, BigBasket and Instamart.
+AI meal planning for Indian kitchens. Generate a personalised multi-day meal plan, browse full recipes sourced from real cooking sites, track what's in your pantry, and turn the plan into a shopping checklist with one-click search links to Blinkit, BigBasket and Instamart.
 
 **Live demo:** [forkcast-frontend.onrender.com](https://forkcast-frontend.onrender.com)
+
+## What makes this different
+
+Forkcast is built around how Indian households actually cook and shop:
+
+- **Indian grocery links** — every shopping-list item links straight to Blinkit, BigBasket or Instamart search, so the plan turns into a real order in one tap.
+- **Real recipes, retrieved not invented** — Web Search mode finds the actual recipe on a cooking site (vegrecipesofindia.com, hebbarskitchen.com and others), pulls its real ingredients and steps from the page's Schema.org data, and only then has the AI write the final recipe from that content. The recipe you get matches the source.
+- **Pantry-first planning** — tell it what's in your fridge and it plans around those ingredients, then skips them when building the shopping list.
+- **Fast by design** — day generation is ~95% faster than the first version (130s → 6s per day), and days stream in live as they're written.
+- **Reliable on the free tier** — generation runs through a model chain (Gemini flash → lite → Groq), so a plan still completes when one model hits its daily quota.
 
 ## Features
 
 - **AI meal planning**: generate 1-7 days of meals starting on any date, with full recipe details (ingredients, steps, macros, source links)
-- **Two recipe modes**
+- **Two ways to plan**
   - **Web Search**: plans recipes with Gemini, finds the real recipe on a cooking site through Tavily, then writes the final recipe from that real content
   - **AI Generated**: skips the web and has Gemini write each recipe from its own training knowledge. Faster, but not sourced from a real page
 - **Preferences**: cuisines, vegetarian / vegan, allergens, sodium / sugar / macro targets, prep and cook time limits, equipment, and meals per day. Vegetarian is on by default
@@ -36,7 +46,7 @@ forkcast does not scrape retailers and does not use any cart API. The links just
 
 ### Recipe generation
 
-Both pipelines stream progress to the browser over Server-Sent Events (SSE), so the UI can show messages like "Writing your meal plan... (2/7)".
+Both modes stream progress to the browser over Server-Sent Events (SSE), so the UI can show messages like "Writing your meal plan... (2/7)".
 
 **Web Search**
 
@@ -72,7 +82,7 @@ The list is built in the browser from the generated plan:
 3. Each item carries a `searchTerm` written the way a shopper would type it into an Indian grocery app (for example `paneer`, `atta`, `curd`, `toor dal`)
 4. You tick items off as you buy them, and the checked state is saved locally
 
-### Access limits
+### Usage limits
 
 The generation endpoints are rate limited per IP to protect the AI quota. In production the limit is 2 requests per day, and a shared access code (`FULL_ACCESS_CODE`) raises it to 10 for trusted users. In development the limit is effectively off.
 
@@ -161,7 +171,7 @@ The repo ships a Render Blueprint (`render.yaml`): a Node web service for the ba
 | `GEMINI_FALLBACK_MODEL` | No         | set in `aiService.ts`   | Lighter model used after a 503                                                                         |
 | `GEMINI_RETRY_MS`       | No         | `10000`                 | Base wait between retries (attempt n waits n x this)                                                   |
 | `GEMINI_TIMEOUT_MS`     | No         | `180000`                | Per-attempt timeout for generation calls                                                               |
-| `GROQ_API_KEY`          | No         | none                    | Groq API key — enables the Groq fallback link in the model chain                                       |
+| `GROQ_API_KEY`          | No         | none                    | Groq API key — enables the Groq fallback link in the model chain                                        |
 | `GROQ_MODEL`            | No         | set in `aiService.ts`   | Groq model for the fallback link                                                                       |
 | `PORT`                  | No         | `3001`                  | Backend port                                                                                           |
 | `CORS_ORIGIN`           | No         | `http://localhost:5173` | Allowed CORS origin in development                                                                     |

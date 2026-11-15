@@ -4,6 +4,8 @@ AI meal planning for Indian kitchens. Generate a personalised multi-day meal pla
 
 **Live demo:** [forkcast-frontend.onrender.com](https://forkcast-frontend.onrender.com)
 
+[![CI](https://github.com/dropps07/forkcast/actions/workflows/ci.yml/badge.svg)](https://github.com/dropps07/forkcast/actions/workflows/ci.yml)
+
 ## What makes this different
 
 Forkcast is built around how Indian households actually cook and shop:
@@ -65,7 +67,8 @@ Both modes apply to full-plan generation and to regenerating individual meals.
 - A daily-quota 429 fails fast and moves to the next model instead of burning retries on a quota that won't reset until tomorrow
 - Gemini calls retry on overloads (HTTP 503) with increasing waits, and each attempt has a timeout so a hung call can't stall the plan
 - Every generation attempt is counted per model per day, so you can see exactly how much of the free quota a plan used
-- Model output is parsed as JSON, and malformed or empty responses fail immediately instead of retrying
+- Every model response is validated against a zod schema before it reaches the UI — a bad recipe (missing fields, wrong types, impossible macros) fails that attempt and the chain moves to the next model, instead of serving garbage. Malformed or empty responses fail immediately instead of retrying
+- 37 tests cover the validation schemas, the date helpers and the ingredient merging, and run on every push via GitHub Actions CI
 
 ### Performance
 
@@ -182,4 +185,8 @@ The repo ships a Render Blueprint (`render.yaml`): a Node web service for the ba
 
 ## Roadmap
 
-- Validation of model output with a schema (zod), plus tests for the date helpers and ingredient merging
+- A built-in sample plan, so visitors can browse a full week and shopping list without API keys or using the daily quota
+
+## License
+
+MIT — see [LICENSE](LICENSE).

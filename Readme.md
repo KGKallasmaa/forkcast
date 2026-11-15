@@ -158,7 +158,3 @@ In production, the backend serves the built frontend from `frontend/dist`, so on
 - Free-tier deployment (single Node service serving both API and frontend)
 - Faster generation (parallel days, shorter model "thinking")
 - Validation of model output with a schema
-
-## Acknowledgements
-
-The overall structure of the app (type-first state design, two generation pipelines, access gate) was inspired by [SempAI](https://github.com/kylemtan/SempAI). forkcast replaces its Claude and Kroger integrations with Gemini and Indian grocery search links.

@@ -438,6 +438,30 @@ button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
 
 .usage-indicator--exhausted { color: #E8A020; }
 
+/* ── Server status button ──
+   Manual health check for the backend, which sleeps on Render's free tier
+   after 15 minutes idle. Same pill shape as the usage indicator above it;
+   the colour is the state (idle/checking muted, waking amber, awake green,
+   unreachable coral). */
+.server-status-btn {
+  align-self: center;
+  background: var(--bg-hover);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  margin-top: 8px;
+}
+.server-status-btn:hover:not(:disabled) { border-color: var(--border); color: var(--text); }
+.server-status-btn:disabled { cursor: default; }
+.server-status-btn--waking { color: #E8A020; }
+.server-status-btn--awake { color: #16A34A; }
+.server-status-btn--unreachable { color: var(--accent); }
+
 /* ── Generate button ──
    A Dia-style pill: full width, warm coral, generous radius. */
 .btn-generate {
@@ -1483,6 +1507,29 @@ button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
   font-size: 14px;
   line-height: 1.6;
   max-width: 340px;
+}
+
+.empty-state__demo-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 340px;
+  margin-top: -4px;
+}
+
+/* Marks a Demo Mode plan so it is never mistaken for an AI-generated one. */
+.sample-plan-badge {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 10px;
+  padding: 2px 10px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 /* ── Blacklist modal ── */

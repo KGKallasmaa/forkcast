@@ -7,6 +7,7 @@ import { usePantryStore, type PantryItem } from './usePantryStore';
 import { useUsageStore } from './useUsageStore';
 import { canonicalIngredientKey, cleanIngredientName } from '../utils/ingredientKey';
 import { getPlannedDays, type PlannedDay } from '../utils/generationProgress';
+import { SAMPLE_DAYS } from '../data/samplePlan';
 
 function toTitleCase(str: string): string {
   return str.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -127,6 +128,9 @@ interface MealPlanState {
   isLoading: boolean;
   progressMessage: string;
   error: string | null;
+  // True when the current plan is the curated Demo Mode sample (loaded from
+  // SAMPLE_DAYS, no AI call). A real generation clears it.
+  isSample: boolean;
   // Live generation progress (in-memory only, not persisted): when the
   // current generation started, and the days it will produce (from the
   // request's start date + day count). Empty for regeneration, which has
@@ -144,6 +148,9 @@ interface MealPlanState {
 
   generate: () => Promise<void>;
   regenerateSelected: () => Promise<void>;
+  // Loads the curated sample plan (Demo Mode). No backend call, no quota
+  // used, no API keys needed.
+  loadSamplePlan: () => void;
   addToBlacklist: (entries: { id: string; name: string }[]) => void;
   removeFromBlacklist: (id: string) => void;
   clearBlacklist: () => void;
@@ -191,6 +198,7 @@ export const useMealPlanStore = create<MealPlanState>()(
       generationStartedAt: null,
       plannedDays: [],
       error: null,
+      isSample: false,
       blacklist: [],
       favorites: [],
       pinnedFavoriteIds: [],
@@ -198,6 +206,28 @@ export const useMealPlanStore = create<MealPlanState>()(
       recentlyRegenerated: [],
       shoppingListStale: false,
       checkedItems: [],
+
+      loadSamplePlan: () => {
+        // Demo Mode: a ready-made 3-day plan, loaded locally. No backend
+        // call, no generation quota used, no API keys needed. The shopping
+        // list is built the same way as for a generated plan, so it still
+        // respects the pantry.
+        const days = SAMPLE_DAYS;
+        set({
+          mealPlan: {
+            weekOf: days[0]?.date ?? '',
+            mealPlan: days,
+            shoppingList: buildShoppingList(days, usePantryStore.getState().pantry),
+          },
+          isSample: true,
+          isLoading: false,
+          progressMessage: '',
+          error: null,
+          generationStartedAt: null,
+          plannedDays: [],
+          checkedItems: [],
+        });
+      },
 
       generate: async () => {
         // Clear the old plan up front: days arriving below build a fresh
@@ -211,6 +241,7 @@ export const useMealPlanStore = create<MealPlanState>()(
           progressMessage: '',
           error: null,
           mealPlan: null,
+          isSample: false,
           checkedItems: [],
           generationStartedAt: Date.now(),
           plannedDays: getPlannedDays(prefs.startDate || todayISO(), prefs.numDays),
@@ -251,6 +282,7 @@ export const useMealPlanStore = create<MealPlanState>()(
                 mealPlan: days,
                 shoppingList: buildShoppingList(days, usePantryStore.getState().pantry),
               },
+              isSample: false,
             });
           };
 
@@ -273,6 +305,7 @@ export const useMealPlanStore = create<MealPlanState>()(
 
           set({
             mealPlan,
+            isSample: false,
             isLoading: false,
             progressMessage: '',
             generationStartedAt: null,
@@ -390,6 +423,7 @@ export const useMealPlanStore = create<MealPlanState>()(
           const newlyRegeneratedKeys = regenerated.map((r) => regenKey(r.day, r.mealType));
           set((s) => ({
             mealPlan: updatedPlan,
+            isSample: false,
             isLoading: false,
             progressMessage: '',
             generationStartedAt: null,
@@ -491,6 +525,7 @@ export const useMealPlanStore = create<MealPlanState>()(
       name: 'forkcast-meal-plan',
       partialize: (s) => ({
         mealPlan: s.mealPlan,
+        isSample: s.isSample,
         blacklist: s.blacklist,
         favorites: s.favorites,
         pinnedFavoriteIds: s.pinnedFavoriteIds,

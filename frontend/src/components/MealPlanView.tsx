@@ -26,7 +26,7 @@ function formatWeekRange(weekOf: string): string {
 export default function MealPlanView() {
   const {
     mealPlan, isLoading, progressMessage, error, clearError,
-    generationStartedAt, plannedDays,
+    generationStartedAt, plannedDays, isSample, loadSamplePlan,
     regenSelection, regenerateSelected, clearRegenSelection,
   } = useMealPlanStore();
 
@@ -91,6 +91,12 @@ export default function MealPlanView() {
           <p className="empty-state__body">
             Set your preferences in the sidebar and click <strong>Generate Meal Plan</strong> to create your weekly plan.
           </p>
+          <button className="btn-secondary lenso-btn lenso-btn--glass" onClick={loadSamplePlan}>
+            Try a sample plan
+          </button>
+          <p className="empty-state__demo-note">
+            No sign-up or API key needed — browse a ready-made 3-day plan.
+          </p>
         </div>
       </main>
     );
@@ -110,7 +116,10 @@ export default function MealPlanView() {
       <div className="calendar-header">
         <div className="calendar-header__title-group">
           <span className="calendar-header__label">Meal Plan for</span>
-          <h2 className="calendar-header__title">{weekLabel}</h2>
+          <h2 className="calendar-header__title">
+            {weekLabel}
+            {isSample && <span className="sample-plan-badge">Sample plan</span>}
+          </h2>
         </div>
         <div className="calendar-header__actions">
           <button

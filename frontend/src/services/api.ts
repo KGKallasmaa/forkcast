@@ -32,14 +32,14 @@ async function streamRequest<T>(
   onDay?: (day: DayPlan) => void
 ): Promise<T> {
   // The backend sleeps on Render's free tier after 15 minutes idle, and a
-  // wake-up takes 30–60s. The first request after a pause can fail at the
+  // wake-up can take 60–90s. The first request after a pause can fail at the
   // network level while it wakes, so retry network failures with increasing
-  // delays (5s, 15s, 30s — about 50s of cover) instead of failing the
+  // delays (10s, 20s, 30s, 30s — about 90s of cover) instead of failing the
   // generation outright. Only network errors are retried — an HTTP response
   // (429, 400, 500) is a real answer from the server and is handled below,
   // not retried. While waiting, tell the UI the server is waking so the
   // user knows it is retrying rather than stuck.
-  const RETRY_DELAYS_MS = [5000, 15000, 30000];
+  const RETRY_DELAYS_MS = [10000, 20000, 30000, 30000];
   let res: Response;
   for (let attempt = 0; ; attempt++) {
     try {

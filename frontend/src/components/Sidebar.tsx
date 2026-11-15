@@ -9,6 +9,14 @@ import {
 } from '../store/usePreferencesStore';
 import { useMealPlanStore } from '../store/useMealPlanStore';
 import { useUsageStore } from '../store/useUsageStore';
+import { BASE } from '../services/api';
+import {
+  serverStatusLabel,
+  WAKE_COUNTDOWN_SECONDS,
+  WAKE_UNREACHABLE_SECONDS,
+  WAKE_POLL_INTERVAL_MS,
+  type ServerStatus,
+} from '../utils/serverStatus';
 import CheckboxGroup from './sidebar/CheckboxGroup';
 import RangeSlider from './sidebar/RangeSlider';
 
@@ -88,6 +96,76 @@ export default function Sidebar({ isOpen, onClose }: Props) {
   const [thumbTop, setThumbTop] = useState(0);
   const [thumbHeight, setThumbHeight] = useState(0);
   const [scrollable, setScrollable] = useState(false);
+
+  // Server wake-up status (manual check — not automatic, so it never blocks
+  // or delays generation). The backend sleeps on Render's free tier after
+  // 15 minutes idle, so this lets the user see whether it is awake and,
+  // while it is waking, how long is left.
+  const [serverStatus, setServerStatus] = useState<ServerStatus>('idle');
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const wakeTimerRef = useRef<number | null>(null);
+  const wakeElapsedRef = useRef(0);
+  const wakePollRef = useRef(0);
+  const wakeActiveRef = useRef(false);
+
+  const stopWakeTimers = useCallback(() => {
+    if (wakeTimerRef.current !== null) {
+      window.clearInterval(wakeTimerRef.current);
+      wakeTimerRef.current = null;
+    }
+    wakeActiveRef.current = false;
+  }, []);
+
+  const checkHealth = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${BASE}/health`);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const handleServerStatusClick = useCallback(async () => {
+    // A check or wake cycle is already running — ignore the extra click.
+    if (wakeActiveRef.current) return;
+    wakeActiveRef.current = true;
+    setServerStatus('checking');
+    setSecondsLeft(null);
+    if (await checkHealth()) {
+      wakeActiveRef.current = false;
+      setServerStatus('awake');
+      return;
+    }
+    // The server did not answer: it is waking. Count down from the typical
+    // wake time and poll /health every 5s. When the countdown runs out, show
+    // "Still waking…" and keep polling; after two full cycles with no
+    // response, report it as unreachable.
+    setServerStatus('waking');
+    setSecondsLeft(WAKE_COUNTDOWN_SECONDS);
+    wakeElapsedRef.current = 0;
+    wakePollRef.current = 0;
+    wakeTimerRef.current = window.setInterval(async () => {
+      wakeElapsedRef.current += 1;
+      wakePollRef.current += 1;
+      setSecondsLeft((prev) => (prev !== null && prev > 1 ? prev - 1 : null));
+      if (wakePollRef.current % (WAKE_POLL_INTERVAL_MS / 1000) === 0) {
+        if (await checkHealth()) {
+          stopWakeTimers();
+          setServerStatus('awake');
+          setSecondsLeft(null);
+          return;
+        }
+      }
+      if (wakeElapsedRef.current >= WAKE_UNREACHABLE_SECONDS) {
+        stopWakeTimers();
+        setServerStatus('unreachable');
+        setSecondsLeft(null);
+      }
+    }, 1000);
+  }, [checkHealth, stopWakeTimers]);
+
+  // Stop the wake-up timers if the sidebar unmounts mid-check.
+  useEffect(() => stopWakeTimers, [stopWakeTimers]);
 
   const syncScrollbar = useCallback(() => {
     const el = scrollRef.current;
@@ -320,6 +398,16 @@ export default function Sidebar({ isOpen, onClose }: Props) {
           {usage.remaining} of {usage.limit} generation{usage.limit === 1 ? '' : 's'} left today
         </div>
       )}
+
+      <button
+        type="button"
+        className={`server-status-btn server-status-btn--${serverStatus}`}
+        onClick={handleServerStatusClick}
+        disabled={serverStatus === 'checking' || serverStatus === 'waking'}
+        title="Ping the backend to see whether it is awake — it sleeps after 15 minutes idle on the free tier"
+      >
+        {serverStatusLabel(serverStatus, secondsLeft)}
+      </button>
 
       <button className="btn-generate lenso-btn lenso-btn--prominent" onClick={generate} disabled={isLoading} data-tour="generate-btn">
         {isLoading ? 'Generating…' : 'Generate Meal Plan'}

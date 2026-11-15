@@ -108,6 +108,13 @@ export default function Sidebar({ isOpen, onClose }: Props) {
     return () => { el.removeEventListener('scroll', syncScrollbar); ro.disconnect(); };
   }, [syncScrollbar]);
 
+  // Fetch the real usage count on mount. Without this the indicator shows
+  // the store's placeholder defaults ("2 of 2 left") until a generation
+  // completes — which is wrong whenever generations were already used.
+  useEffect(() => {
+    usage.refresh();
+  }, []);
+
   return (
     <aside className={`sidebar${isOpen ? ' sidebar--open' : ''}`} data-tour="sidebar">
       <div ref={scrollRef} className="sidebar__scroll">
@@ -305,12 +312,14 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         />
       </div>
 
-      <div
-        className={`usage-indicator${usage.remaining === 0 ? ' usage-indicator--exhausted' : ''}`}
-        title={usage.resetAt ? `Resets in ${timeUntil(usage.resetAt)}` : undefined}
-      >
-        {usage.remaining} of {usage.limit} generation{usage.limit === 1 ? '' : 's'} left today
-      </div>
+      {usage.loaded && (
+        <div
+          className={`usage-indicator${usage.remaining === 0 ? ' usage-indicator--exhausted' : ''}`}
+          title={usage.resetAt ? `Resets in ${timeUntil(usage.resetAt)}` : undefined}
+        >
+          {usage.remaining} of {usage.limit} generation{usage.limit === 1 ? '' : 's'} left today
+        </div>
+      )}
 
       <button className="btn-generate lenso-btn lenso-btn--prominent" onClick={generate} disabled={isLoading} data-tour="generate-btn">
         {isLoading ? 'Generating…' : 'Generate Meal Plan'}

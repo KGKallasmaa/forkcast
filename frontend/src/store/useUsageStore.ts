@@ -10,6 +10,10 @@ interface UsageState {
   limit: number;
   remaining: number;
   resetAt: number | null;
+  // False until the first successful refresh. The defaults above are just
+  // placeholders — showing "2 of 2 left" before the real count arrives
+  // would claim generations the user may already have used.
+  loaded: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -18,14 +22,16 @@ export const useUsageStore = create<UsageState>((set) => ({
   limit: 2,
   remaining: 2,
   resetAt: null,
+  loaded: false,
 
   refresh: async () => {
     try {
       const res = await fetch(`${BASE}/api/meal-plan/usage`);
       const json = (await res.json()) as { used: number; limit: number; remaining: number; resetAt: number | null };
-      set(json);
+      set({ ...json, loaded: true });
     } catch {
-      // leave last-known values
+      // leave last-known values (and loaded: false, so the UI never
+      // presents the placeholder defaults as a real count)
     }
   },
 }));

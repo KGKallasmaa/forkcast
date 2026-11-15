@@ -1,7 +1,19 @@
 import type { MealPlanRequest } from '../store/useMealPlanStore';
 import type { DayPlan, MealPlan, Recipe } from '../types/mealPlan';
 
-const BASE = '';
+// Build-time backend origin. Render sets VITE_API_URL from the backend
+// service's host via fromService (a bare hostname, no scheme); a full URL
+// also works. In dev the var is unset, so BASE stays '' and the Vite dev
+// proxy handles /api. In production the build bakes in the backend URL, so
+// the browser calls the backend directly — no proxy in the path, which is
+// what keeps the SSE meal-plan stream unbuffered (Render's static-site
+// rewrite proxy buffers streaming responses; see DEPLOY.md).
+const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+export const BASE = apiUrl
+  ? apiUrl.startsWith('http')
+    ? apiUrl
+    : `https://${apiUrl}`
+  : '';
 
 interface SseEvent {
     type: 'progress' | 'day' | 'done' | 'error';

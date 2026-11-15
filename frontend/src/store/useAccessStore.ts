@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { BASE } from '../services/api';
 
 // Not persisted — always re-derived from the httpOnly signed cookie via the
 // backend. The cookie itself is what actually grants the rate-limit bypass;
@@ -13,7 +14,7 @@ export const useAccessStore = create<AccessState>((set) => ({
 
   initialize: async () => {
     try {
-      const res = await fetch('/api/access/status');
+      const res = await fetch(`${BASE}/api/access/status`);
       const json = (await res.json()) as { trusted: boolean };
       set({ trusted: json.trusted });
     } catch {

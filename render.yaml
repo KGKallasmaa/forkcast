@@ -1,0 +1,55 @@
+# Forkcast on Render — Blueprint (render.yaml at the repo root).
+# Two services: the Express backend (Node web service) and the Vite
+# frontend (static site). Deploy with: Render dashboard → New → Blueprint
+# → connect dropps07/forkcast → Apply. See DEPLOY.md for the full steps.
+#
+# Wiring: the frontend calls the backend DIRECTLY (VITE_API_URL, baked in
+# at build time from the backend service's host). There is deliberately no
+# static-site rewrite proxy in front of the API — Render's own support
+# confirms its static-site rewrites buffer streaming responses, and
+# Forkcast's meal-plan stream is SSE; the direct call is what keeps the
+# stream unbuffered.
+
+services:
+  # ── Backend: Express 5 API ──────────────────────────────────────────
+  - type: web
+    name: forkcast-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    # --include=dev is required: NODE_ENV=production makes npm skip
+    # devDependencies, and typescript (needed by `npm run build` → tsc)
+    # is a devDependency. Without it the build fails with
+    # `tsc: command not found`.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # The frontend origin, so the browser's cross-origin API calls are
+      # allowed (the backend already reads CORS_ORIGIN; see index.ts).
+      - key: CORS_ORIGIN
+        value: https://forkcast-frontend.onrender.com
+      # Secrets — set in the Render dashboard, never in this file.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  # ── Frontend: Vite static site ──────────────────────────────────────
+  # Note: static sites take no `plan` field (Render errors if one is set).
+  - type: web
+    name: forkcast-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Build-time backend origin, from the backend service's host
+      # (a bare hostname, no scheme — the frontend prepends https://).
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: forkcast-backend
+          property: host

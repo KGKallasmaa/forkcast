@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { Recipe } from '../../types/mealPlan';
 import { useMealPlanStore } from '../../store/useMealPlanStore';
 import { exportSingleRecipePDF } from '../../utils/exportMealPlan';
+import { BASE } from '../../services/api';
 
 interface Props {
   recipe: Recipe;
@@ -87,7 +88,7 @@ export default function Modal({ recipe, mealType, onClose }: Props) {
         {recipe.imageUrl && (
           <div className="modal__hero">
             <img
-              src={`/api/image-proxy?url=${encodeURIComponent(recipe.imageUrl)}`}
+              src={`${BASE}/api/image-proxy?url=${encodeURIComponent(recipe.imageUrl)}`}
               alt={recipe.name}
               className="modal__hero-img"
               onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}

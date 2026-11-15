@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { BASE } from '../services/api';
 
 // Not persisted — always re-derived from the backend, which reads directly
 // from the same store the rate limiter itself uses (see /api/meal-plan/usage
@@ -20,7 +21,7 @@ export const useUsageStore = create<UsageState>((set) => ({
 
   refresh: async () => {
     try {
-      const res = await fetch('/api/meal-plan/usage');
+      const res = await fetch(`${BASE}/api/meal-plan/usage`);
       const json = (await res.json()) as { used: number; limit: number; remaining: number; resetAt: number | null };
       set(json);
     } catch {

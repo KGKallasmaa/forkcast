@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Backend build
+        run: npm run build -w backend
+
+      - name: Backend tests
+        run: npm test -w backend
+
+      - name: Frontend build
+        run: npm run build -w frontend
+
+      - name: Frontend tests
+        run: npm test -w frontend

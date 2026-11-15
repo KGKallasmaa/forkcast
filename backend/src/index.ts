@@ -17,7 +17,10 @@ const PORT = Number(process.env.PORT) || 3001;
 
 // In production the frontend is served from the same origin, so CORS is only
 // needed for local development where Vite runs on a different port.
-const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+// CORS_ORIGIN may be a bare hostname (Render's fromService `host`
+// property); prepend https:// so the browser's Origin header matches.
+const rawCorsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+const corsOrigin = /^https?:\/\//.test(rawCorsOrigin) ? rawCorsOrigin : `https://${rawCorsOrigin}`;
 app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 // Passing a secret enables *signed* cookies (req.signedCookies) for the

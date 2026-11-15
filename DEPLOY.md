@@ -1,12 +1,20 @@
 # Deploying Forkcast on Render
 
 Forkcast deploys as two free Render services from this repo's `render.yaml`
-(Blueprint): the Express backend and the Vite frontend.
+(Blueprint): the Express backend and the Vite frontend. Everything the
+deploy needs lives in `render.yaml` — the services, the build commands,
+and the environment variables — so a Blueprint apply configures both
+services with no manual dashboard steps beyond filling in the secrets.
 
 | Service | Type | URL |
 |---|---|---|
-| `forkcast-backend` | Node web service (`backend/`) | https://forkcast-backend.onrender.com |
-| `forkcast-frontend` | Static site (`frontend/`, publishes `dist/`) | https://forkcast-frontend.onrender.com |
+| `forkcast-backend` | Node web service (`backend/`) | https://forkcast-backend-s16w.onrender.com |
+| `forkcast-frontend` | Static site (`frontend/`, publishes `dist/`) | Shown in the Render dashboard after deploy |
+
+Render may suffix a service's hostname if the plain name is taken (the
+backend got `-s16w`). The URLs above are the live ones; if a service is
+recreated and its hostname changes, `render.yaml` resolves the other
+service's host with `fromService`, so no code change is needed.
 
 ## Steps
 
@@ -19,20 +27,32 @@ Forkcast deploys as two free Render services from this repo's `render.yaml`
    declared `sync: false` in `render.yaml`, so Render leaves them empty
    until you fill them in:
    - `GEMINI_API_KEY` — **required**. Meal generation does not work without it.
+   - `TAVILY_API_KEY` — **required**. The backend throws at startup without
+     it, because Web Search mode needs Tavily. (AI Generated mode does not,
+     but the service still will not start.)
    - `GROQ_API_KEY` — optional. Only for the Groq fallback link in the
      model chain; the app runs fine without it (that link is skipped).
    Save — Render redeploys the backend.
+   `GEMINI_MODEL` is already set in `render.yaml` to
+   `gemini-3.5-flash-lite` (the fast model, ~95% faster per day than
+   flash). If you change it, the backend restarts with the new model.
 4. **Wait for both services to show "Live".** The first build takes a few
-   minutes.
-5. **Open https://forkcast-frontend.onrender.com** and generate a plan to
-   confirm days stream in.
+   minutes. The frontend build explicitly installs Vite's native Linux
+   bindings (`@rolldown/binding-linux-x64-gnu`,
+   `lightningcss-linux-x64-gnu`); without them npm skips the optional deps
+   and `vite build` fails with "Cannot find native binding".
+5. **Open the frontend URL** from the Render dashboard and generate a plan
+   to confirm days stream in.
 
 ## How the frontend reaches the backend
 
 The frontend calls the backend **directly**. At build time Render sets
 `VITE_API_URL` from the backend service's host (`fromService`, property
 `host`), and Vite bakes it into the bundle, so the browser fetches
-`https://forkcast-backend.onrender.com/api/...`. There is deliberately
+`https://forkcast-backend-s16w.onrender.com/api/...`. The backend's
+`CORS_ORIGIN` is set the same way from the frontend service's host, and
+the backend prepends `https://` if it gets a bare hostname, so CORS stays
+correct even if Render suffixes either hostname. There is deliberately
 **no** static-site rewrite proxy in front of the API: Render's static-site
 rewrites buffer streaming responses (confirmed by Render support — the fix
 they give is to call the web service directly), and Forkcast's meal-plan

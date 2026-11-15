@@ -28,11 +28,23 @@ services:
       - key: NODE_ENV
         value: production
       # The frontend origin, so the browser's cross-origin API calls are
-      # allowed (the backend already reads CORS_ORIGIN; see index.ts).
+      # allowed. Set from the frontend service's host (a bare hostname);
+      # the backend prepends https:// (see index.ts), so this stays
+      # correct even if Render suffixes the frontend's hostname.
       - key: CORS_ORIGIN
-        value: https://forkcast-frontend.onrender.com
+        fromService:
+          type: web
+          name: forkcast-frontend
+          property: host
+      # Fast model by default: the lite model is ~95% faster per day than
+      # flash (3.6-8.6s vs 93-167s). Without this the backend defaults to
+      # flash and a 7-day plan takes several minutes.
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
       # Secrets — set in the Render dashboard, never in this file.
       - key: GEMINI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
@@ -43,7 +55,10 @@ services:
     name: forkcast-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    # The explicit binding installs work around an npm bug where the
+    # native optional deps (rolldown / lightningcss) are skipped on Linux
+    # CI, which fails `vite build` with "Cannot find native binding".
+    buildCommand: npm install && npm install --no-save @rolldown/binding-linux-x64-gnu lightningcss-linux-x64-gnu && npm run build
     staticPublishPath: ./dist
     envVars:
       # Build-time backend origin, from the backend service's host

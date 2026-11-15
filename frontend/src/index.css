@@ -1,35 +1,64 @@
-/* ── Theme tokens ── */
+/* ── Theme tokens ──
+   Claude-inspired light theme (v9): Claude.ai's warm paper page
+   (#F0EEE6), warm-white cards (#FAF9F5) on warm hairline borders,
+   warm near-black text (#1F1E1D), and Claude's coral accent
+   (#D97757). The Supaste blue gradient background (v8) is gone —
+   it looked off and out of place against the warm UI. The dark
+   theme keeps the same structure in warm dark tones. */
 :root {
-  --bg:           #FAFAF7;
-  --bg-sidebar:   #F0EFE8;
-  --bg-card:      #FFFFFF;
+  color-scheme: light;
+  --bg:           #F0EEE6;
+  --bg-sidebar:   #E9E4D6;
+  --bg-card:      #FAF9F5;
   --surface:      var(--bg-card);
-  --text:         #1C1C1A;
-  --text-muted:   #6B6B60;
+  --bg-hover:     rgba(74, 58, 32, 0.05);
+  --text:         #1F1E1D;
+  --text-muted:   #6B6960;
   --text-primary:   var(--text);
   --text-secondary: var(--text-muted);
-  --accent:       #C0392B;
-  --accent-hover: #A93226;
-  --border:       #E0DED5;
-  --shadow:       0 1px 4px rgba(0,0,0,0.06);
+  --accent:       #D97757;
+  --accent-hover: #C96442;
+  --border:       #E5E0D5;
+  --shadow:       0 1px 3px rgba(74, 58, 32, 0.06), 0 4px 16px rgba(74, 58, 32, 0.05);
+  --shadow-lg:    0 12px 40px rgba(74, 58, 32, 0.14);
 
-  --sidebar-width: 300px;
+  --sidebar-width: 320px;
   --header-height: 56px;
+
+  /* Page background is Claude's warm paper (see --bg-base below);
+     the Supaste blue glows (v8) are removed entirely. */
+  --bg-base: #F0EEE6; /* Claude.ai warm paper */
+  /* Warm-white glass, so the translucent cards (sidebar, meal cards,
+     calendar) read as warm paper-white on the paper background,
+     not cold white. */
+  --glass-bg: rgba(250, 249, 245, 0.65);
+  --glass-border: rgba(31, 30, 29, 0.10);
+  --glass-rim: rgba(255, 255, 255, 0.7);
+  --glass-shadow: 0 8px 24px rgba(74, 58, 32, 0.08);
 
   --font-sans:  'Noto Sans JP', system-ui, sans-serif;
   --font-serif: 'Noto Serif JP', Georgia, serif;
 }
 
 [data-theme='dark'] {
-  --bg:           #111110;
-  --bg-sidebar:   #1A1A18;
-  --bg-card:      #1C1C1A;
-  --text:         #F0EFE8;
-  --text-muted:   #9E9D90;
-  --accent:       #E05555;
-  --accent-hover: #C94444;
-  --border:       #2A2A28;
-  --shadow:       0 1px 4px rgba(0,0,0,0.3);
+  color-scheme: dark;
+  --bg:           #171512;
+  --bg-sidebar:   #201B16;
+  --bg-card:      #231E19;
+  --bg-hover:     rgba(255, 255, 255, 0.06);
+  --text:         #F2EBDD;
+  --text-muted:   #A39A87;
+  --accent:       #D97757;
+  --accent-hover: #C96442;
+  --border:       #342D24;
+  --shadow:       0 1px 4px rgba(0,0,0,0.35);
+  /* Warm dark base (Claude dark equivalent); the Supaste blue glows
+     (v8) are removed entirely. */
+  --bg-base: #171512;
+  --glass-bg: rgba(35, 30, 25, 0.48);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-rim: rgba(255, 255, 255, 0.16);
+  --glass-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* ── Reset ── */
@@ -50,7 +79,9 @@ body {
   font-weight: 400;
   font-size: 14px;
   color: var(--text);
-  background: var(--bg);
+  /* Claude theme (v9): warm paper page (#F0EEE6). The Supaste blue
+     gradient glows (v8) are removed entirely. */
+  background-color: var(--bg-base);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -64,19 +95,60 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  /* Positioned above the body background (Claude warm paper). */
+  position: relative;
+  z-index: 1;
 }
 
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 20px;
   height: var(--header-height);
-  border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  /* Supaste-style black navbar: pure black in both themes (a literal
+     colour, not a theme token, so no theme override can lighten it).
+     MacBook Air notch (v4): a centred black tab hanging from the top
+     edge — attached at the top (no gap above it), narrower than the
+     viewport so the warm paper background shows on either side, rounded
+     BOTTOM corners only. Sticky so it stays put if the shell ever
+     scrolls. White text throughout; the nav links and icons below carry
+     their own colours. */
+  background: #000;
+  color: #fff;
+  position: sticky;
+  top: 0;
+  align-self: center;
+  width: min(720px, 100%);
+  margin-top: 0;
+  border-radius: 0 0 20px 20px;
   flex-shrink: 0;
   z-index: 10;
 }
+
+/* MacBook Air notch slopes (v8): a 20x20 concave quarter-circle corner
+   piece at each TOP corner of the notch — Supaste's exact placement,
+   from the live site: position absolute, top 0, sticking out to the
+   sides (left -20px / right -20px). The v6 pieces hung below the
+   bottom edge, which was the wrong side — Supaste's sit at the top,
+   so the black bar's top corners slope gently outward instead of
+   ending square. The bottom corners stay plain rounded (20px, no
+   pieces). The left piece uses Supaste's exact path rotated 90deg
+   (the same shape as its mirror); the right piece uses the path
+   unrotated. They sit at the header's top edge, so they are never
+   clipped above the viewport. */
+.app-header__notch-corner {
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  line-height: 0;
+}
+.app-header__notch-corner--left { left: -20px; }
+.app-header__notch-corner--right { right: -20px; }
+.app-header__notch-corner svg { display: block; width: 20px; height: 20px; }
+.app-header__notch-corner--left svg { transform: rotate(90deg); }
 
 .app-header__wordmark {
   display: flex;
@@ -85,8 +157,9 @@ body {
 }
 
 .app-header__logo-mark {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 
@@ -94,8 +167,55 @@ body {
   font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 600;
-  color: var(--accent);
+  color: #fff;
   letter-spacing: -0.3px;
+}
+
+/* ── Header nav (Supaste-style): Pantry / Favorites / Recent Recipes as
+   plain white text links centred in the black bar — minimal text, no glass
+   pills, just a subtle white wash on hover. ── */
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+}
+
+.app-header__nav-link {
+  background: none;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.app-header__nav-link:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.app-header__nav-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* The help "?" keeps its lenso glass face, but on the black bar its glyph
+   is white, like the rest of the navbar text. */
+.app-header .header-action-btn--help {
+  color: #fff;
+}
+
+.app-header .header-action-btn--help:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+  text-decoration: none;
 }
 
 .app-body {
@@ -108,8 +228,19 @@ body {
 .sidebar {
   width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--bg-sidebar);
-  border-right: 1px solid var(--border);
+  /* One card for the whole preferences component (v4): the sidebar
+     itself is the card — rounded, surfaced, floating inset from the
+     viewport edges — and the sections inside are flat/stacked. The
+     scrollbar lives inside .sidebar__scroll, so it stays inside the
+     one card. The old border-right divider is gone (the card has its
+     own border now). */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  margin: 12px 0 12px 12px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
   overflow: hidden;
   position: relative;
 }
@@ -146,16 +277,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Flat/stacked (v4): the whole sidebar is the one card now, so the
+     sections are plain groups inside it — no glass, no border, no
+     radius, no shadow, no padding. Labels, gaps, and content are
+     unchanged. */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .sidebar-section__label {
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
+}
+
+/* Clearer grouping (pref redesign): a hairline divider above every
+   section after the first, with breathing room, so the groups read
+   as a settings page rather than one long stack. The label already
+   carries its own underline, so the divider separates groups, not
+   labels from their content. */
+.sidebar-section + .sidebar-section {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
 }
 
 .sidebar-section__header {
@@ -172,14 +324,19 @@ body {
   border-bottom: none;
 }
 
-/* ── Main panel ── */
+/* ── Main panel ──
+   The plan renders as a document on the warm cream page: a large serif
+   heading row, then the week itself on a white sheet. */
 .main-panel {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 28px 32px 48px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  /* Transparent so the body's Supaste blue gradient shows through the
+     plan area; the week itself still sits on its own white glass sheet. */
+  background: transparent;
 }
 
 /* ── Theme toggle ── */
@@ -227,8 +384,52 @@ body {
   color: #C2C8FB;
 }
 
-/* ── Usage indicator ── */
+/* ── Theme toggle hover: keep the yellow text visible ──
+   The Dark Mode button ("☾ Dark Mode", gold text) sits on the black
+   navbar. The generic lenso hover floods every lenso button with a
+   white wash (inset 0 0 0 100vmax rgb(255 255 255 / .34)), which turns
+   the toggle light grey on hover and the gold text loses all contrast
+   — the yellow label disappears. Fix: strip the wash on this button
+   only (same rim and shading, minus the flood), deepen the amber /
+   indigo tint, and keep the gold / indigo text. Specificity (0,4,1)
+   beats the generic lenso hover (0,3,1); the dark rule is qualified
+   with [data-theme='dark'] (0,5,1) because the dark lenso hover is
+   also (0,4,1) and sits later in the file. */
+button.lenso-btn.theme-toggle:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    inset 0 40px 30px -40px rgb(0 0 0 / .10),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .16),
+    inset 0 40px 10px -40px rgb(255 255 255 / .16),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 4px 16px rgb(74 58 32 / .12);
+}
+button.lenso-btn.theme-toggle--light:hover:not(:disabled) {
+  background-color: rgba(232, 160, 32, 0.22);
+  color: #B8860B;
+}
+[data-theme='dark'] button.lenso-btn.theme-toggle:hover:not(:disabled) {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .18),
+    inset 0 -1px 0 rgb(255 255 255 / .10),
+    0 0 0 .5px rgb(255 255 255 / .10),
+    0 4px 16px rgb(0 0 0 / .40);
+}
+button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
+  background-color: rgba(129, 140, 248, 0.24);
+  color: #C2C8FB;
+}
+
+/* ── Usage indicator ──
+   A subtle status chip, deliberately subordinate to the Generate
+   button below it — muted text on a soft tinted pill, centred. */
 .usage-indicator {
+  display: inline-block;
+  align-self: center;
+  background: var(--bg-hover);
+  border-radius: 999px;
+  padding: 4px 12px;
   font-size: 11px;
   color: var(--text-muted);
   text-align: center;
@@ -237,28 +438,43 @@ body {
 
 .usage-indicator--exhausted { color: #E8A020; }
 
-/* ── Generate button ── */
+/* ── Generate button ──
+   A Dia-style pill: full width, warm coral, generous radius. */
 .btn-generate {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   font-family: var(--font-sans);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px rgba(206, 74, 53, 0.28);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
-.btn-generate:hover { background: var(--accent-hover); }
+.btn-generate:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 6px 18px rgba(206, 74, 53, 0.34);
+  transform: translateY(-1px);
+}
 
-/* ── Mode toggle (segmented control) ── */
+/* ── Mode toggle (segmented control) ──
+   A proper segmented control: plain text options, and the active
+   option as a raised white pill with accent text and a soft shadow
+   (iOS-style). The options no longer carry lenso glass classes — the
+   glass wash was overriding the active state (the accent fill never
+   rendered) and fighting the track. The track surface itself is the
+   lenso glass rule further below (.mode-toggle, in the lenso section);
+   it wins over any background set here on source order, so none is
+   set here. */
 .mode-toggle {
   display: flex;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   padding: 3px;
   gap: 3px;
 }
@@ -268,7 +484,7 @@ body {
   padding: 6px 8px;
   background: none;
   border: none;
-  border-radius: 5px;
+  border-radius: 999px;
   font-family: var(--font-sans);
   font-size: 12px;
   font-weight: 500;
@@ -281,8 +497,9 @@ body {
 }
 
 .mode-toggle__option--active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.10);
 }
 
 .mode-toggle__hint {
@@ -320,7 +537,12 @@ body {
   cursor: pointer;
   font-size: 13px;
   color: var(--text);
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
 }
+
+.checkbox-item:hover { background: var(--bg-hover); }
 
 .checkbox-item input[type='checkbox'] {
   appearance: none;
@@ -353,6 +575,11 @@ body {
   transform: rotate(45deg);
 }
 
+.checkbox-item input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* ── Range slider ── */
 .range-slider {
   display: flex;
@@ -381,9 +608,12 @@ body {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
-  background: var(--border);
+  /* Filled track: the accent fill runs up to --fill (set inline by
+     RangeSlider as a percentage), then the plain track. Same track
+     and thumb on every slider in the app. */
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--fill, 50%), var(--border) var(--fill, 50%), var(--border) 100%);
   outline: none;
   cursor: pointer;
 }
@@ -391,21 +621,23 @@ body {
 .range-slider input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--bg-sidebar);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 .range-slider input[type='range']::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  border: 2px solid var(--bg-sidebar);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 /* ── Subsection label ── */
@@ -440,8 +672,8 @@ body {
 
 .date-range-picker__input {
   width: 100%;
-  padding: 5px 8px;
-  background: var(--bg);
+  padding: 8px 10px;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-family: var(--font-sans);
@@ -454,7 +686,7 @@ body {
 
 .date-range-picker__input:focus {
   outline: none;
-  border-color: var(--text-muted);
+  border-color: var(--accent);
 }
 
 .date-range-picker__summary {
@@ -462,19 +694,27 @@ body {
   color: var(--text-muted);
 }
 
-/* ── Meals stepper ── */
+/* ── Meals stepper ──
+   A clean pill: the −, value and + sit inside one bordered surface
+   pill instead of floating loose. The buttons are lenso icon circles;
+   their accent hover lives in the dedicated lenso override below,
+   because the generic lenso icon hover beats this plain :hover rule
+   on specificity (the same trap the shopping move button hit). */
 .meals-stepper {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  width: fit-content;
 }
 
 .meals-stepper__btn {
   width: 28px;
   height: 28px;
-  border: 1px solid var(--border);
   border-radius: 50%;
-  background: none;
   color: var(--text);
   font-size: 16px;
   cursor: pointer;
@@ -487,11 +727,6 @@ body {
 .meals-stepper__btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
-}
-
-.meals-stepper__btn:not(:disabled):hover {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .meals-stepper__value {
@@ -546,31 +781,60 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Error state ── */
+/* ── Error state ──
+   A soft card with a human sentence, never raw error text (see
+   utils/formatError). */
 .error-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   text-align: center;
-  max-width: 320px;
+  max-width: 440px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 28px 28px 24px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
 }
 
 .error-state__message {
-  font-size: 13px;
-  color: var(--accent);
-  line-height: 1.5;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* Mid-stream error banner: keeps the days that already arrived visible. */
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 12px 16px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+}
+
+.error-banner .error-state__message {
+  text-align: left;
 }
 
 .btn-dismiss {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 6px 16px;
   font-family: var(--font-sans);
   font-size: 13px;
   color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .btn-dismiss:hover { border-color: var(--text-muted); color: var(--text); }
@@ -625,22 +889,27 @@ body {
   gap: 6px;
 }
 
-/* ── Meal card ── */
+/* ── Meal card ──
+   Supaste glass: larger radius, translucent face, bright rim, blurred. */
 .meal-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  box-shadow: var(--shadow);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 12px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
 .meal-card:hover {
   border-color: var(--accent);
-  background: var(--bg-sidebar);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 6px 20px rgba(74, 58, 32, 0.1);
+  transform: translateY(-1px);
 }
 
 .meal-card__top {
@@ -694,8 +963,11 @@ body {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  background: rgba(34, 29, 21, 0.45);
+  /* z-index 1000: the recipe modal is portalled to document.body, so
+     this sits in the root stacking context and paints above the
+     sticky navbar (z-index 10, inside .app's z-index-1 context). */
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -704,16 +976,31 @@ body {
 }
 
 .modal {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
   width: 100%;
   max-width: 760px;
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), 0 24px 64px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+}
+
+/* Recipe detail modal (v9): one consistent, opaque warm-white card.
+   The shared .modal is translucent glass, which let the page
+   background bleed through unevenly (light-blue header, beige hero,
+   grey-blue body — several mismatched panels, not one card). The
+   recipe modal is opaque instead, and its max-height is 90vh so it
+   fits the viewport with margins and scrolls internally. */
+.modal--recipe {
+  background: var(--bg-card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  max-height: 90vh;
 }
 
 .modal__header {
@@ -1021,7 +1308,9 @@ body {
   width: 100%;
   height: 260px;
   flex-shrink: 0;
-  background: var(--bg-sidebar);
+  /* Same surface as the modal card (not the beige sidebar tone), so
+     there is no empty beige panel if the image is loading or absent. */
+  background: var(--bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1031,7 +1320,10 @@ body {
 .modal__hero-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  /* cover (not contain): the photo fills the full modal width as a
+     proper hero. A portrait source is cropped top/bottom instead of
+     letterboxed with empty panels on the sides. */
+  object-fit: cover;
   display: block;
 }
 
@@ -1181,14 +1473,16 @@ body {
 
 .empty-state__title {
   font-family: var(--font-serif);
-  font-size: 18px;
+  font-size: 24px;
+  font-weight: 600;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .empty-state__body {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.6;
-  max-width: 280px;
+  max-width: 340px;
 }
 
 /* ── Blacklist modal ── */
@@ -1206,14 +1500,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-bottom: 20px;
+  /* No margin-bottom: .modal__body already gaps its children 20px, so
+     a margin here doubled the space before the Clear All button. */
 }
 
 .blacklist-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: 6px;
   background: var(--bg-sidebar);
   transition: background 0.15s;
@@ -1234,31 +1529,30 @@ body {
 }
 
 .blacklist-item__remove {
-  background: none;
-  border: none;
   color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
   padding: 2px 4px;
-  border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
 }
 
-.blacklist-item__remove:hover {
-  color: var(--accent);
-  background: rgba(192, 57, 43, 0.08);
-}
+/* The accent hover lives in the dedicated lenso override below
+   (button.lenso-btn--icon.…:hover), which beats the generic lenso
+   icon hover on specificity — the plain :hover rule here was dead. */
 
 .blacklist-clear {
   padding: 8px 20px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-muted);
   font-size: 13px;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+}
+
+/* Clear All is the modal's only action, so it sits right-aligned like
+   the pantry and shopping footers. In the pantry it is already inside
+   .pantry-footer (flex-end); here it is a direct child of the flex
+   column .modal__body, so align-self does the same job. Scoped to the
+   blacklist modal so the pantry footer is untouched. */
+.modal--blacklist .blacklist-clear {
+  align-self: flex-end;
 }
 
 /* ── Pantry modal ─────────────────────────────────────────────────────────── */
@@ -1290,7 +1584,7 @@ body {
   width: 100%;
   padding: 9px 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--surface);
   color: var(--text);
   font-size: 13px;
@@ -1309,7 +1603,7 @@ body {
   right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   list-style: none;
   z-index: 100;
@@ -1340,21 +1634,19 @@ body {
   color: var(--text-muted);
 }
 
+/* The Add button is a lenso prominent pill (white glass, accent text,
+   coral ring) like the shopping modal's Done button — the solid-accent
+   background/colour/radius it used to declare here were dead, because
+   button.lenso-btn--prominent beats this plain class on specificity.
+   Only the properties that actually apply are kept. */
 .pantry-search-bar__add-btn {
   padding: 9px 16px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  transition: opacity 0.15s;
 }
-
-.pantry-search-bar__add-btn:hover { opacity: 0.85; }
 
 .pantry-modal__body {
   overflow-y: auto;
@@ -1397,8 +1689,8 @@ body {
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);
   margin: 0 0 12px;
@@ -1462,14 +1754,11 @@ body {
 }
 
 .pantry-chip__remove {
-  background: none;
-  border: none;
   color: var(--text-muted);
   font-size: 9px;
   cursor: pointer;
   padding: 0 1px;
   line-height: 1;
-  transition: color 0.15s;
 }
 
 .pantry-chip__remove:hover { color: var(--accent); }
@@ -1667,40 +1956,30 @@ body {
 
 .favorite-item__pin {
   padding: 3px 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
   color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
-.favorite-item__pin:hover { border-color: #E8A020; color: #E8A020; }
-
-.favorite-item__pin--active {
-  border-color: #E8A020;
-  color: #E8A020;
-  background: rgba(232, 160, 32, 0.08);
-}
+/* The gold hover/active lives in the dedicated lenso overrides below
+   (button.lenso-btn--icon.favorite-item__pin…), which beat the generic
+   lenso icon hover on specificity. The pin's own border/background
+   hover rules were dead — the lenso icon glass (border: none,
+   999px radius, white wash) overrides them. */
 
 .favorite-item__remove {
-  background: none;
-  border: none;
   color: var(--text-muted);
   font-size: 11px;
   cursor: pointer;
   padding: 2px 4px;
-  border-radius: 4px;
   line-height: 1;
-  transition: color 0.15s, background 0.15s;
 }
 
-.favorite-item__remove:hover {
-  color: var(--accent);
-  background: rgba(192, 57, 43, 0.08);
-}
+/* The accent hover lives in the dedicated lenso override below
+   (button.lenso-btn--icon.…:hover) — the plain :hover rule here was
+   dead, and its coral-tint background was overridden by the lenso
+   icon hover wash. */
 
 /* ── Shopping list toggle-all (shared with the shopping list modal) ──────── */
 
@@ -1719,68 +1998,87 @@ body {
 
 /* ── Shopping item ─────────────────────────────────────────────────────────── */
 
+/* ── Shopping item ───────────────────────────────────────────────────────────
+   Row treatment matches .favorite-item / .blacklist-item exactly (same
+   inset rounded row, same rest/hover background, same 10px 12px padding).
+   The old full-bleed divider style was the only list in the app that
+   looked different. */
+
 .shopping-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 18px;
+  gap: 12px;
+  padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.1s;
+  border-radius: 6px;
+  background: var(--bg-sidebar);
+  transition: background 0.15s;
 }
 
-.shopping-item:last-child { border-bottom: none; }
-.shopping-item:hover { background: var(--bg); }
+.shopping-item:hover { background: var(--border); }
 
-.shopping-item--unchecked { opacity: 0.45; }
 .shopping-item--checked { opacity: 0.5; }
 .shopping-item--checked .shopping-item__name { text-decoration: line-through; }
 .shopping-item--pantry { opacity: 0.65; }
 
+/* Custom checkbox — the same treatment as the sidebar's
+   .checkbox-item input[type='checkbox'] (14px, 1px border, 3px radius,
+   accent fill + white check when checked). The native checkbox with
+   accent-color was the only unstyled checkbox left in the app. */
+
 .shopping-item__native-checkbox {
-  width: 16px;
-  height: 16px;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-card);
   cursor: pointer;
-  accent-color: var(--accent);
   flex-shrink: 0;
+  position: relative;
 }
+
+.shopping-item__native-checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.shopping-item__native-checkbox:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 5px;
+  height: 8px;
+  border: 1.5px solid #fff;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+
+.shopping-item__native-checkbox:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Retailer link — the app's plain link treatment, same as
+   .product-card__link: muted 11px text, accent + underline on hover.
+   The bordered accent pill that inverted on hover was the only link in
+   the app styled that way. */
 
 .shopping-item__buy {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
+  color: var(--text-muted);
   text-decoration: none;
-  padding: 2px 7px;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
   margin-left: auto;
   white-space: nowrap;
-  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .shopping-item__buy:hover {
-  background: var(--accent);
-  color: #fff;
-}
-
-.shopping-item__checkbox {
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid var(--border);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
   color: var(--accent);
-  flex-shrink: 0;
-  background: var(--surface);
-}
-
-.shopping-item:not(.shopping-item--unchecked) .shopping-item__checkbox {
-  background: rgba(192, 57, 43, 0.08);
-  border-color: var(--accent);
+  text-decoration: underline;
 }
 
 .shopping-item__name-group {
@@ -1799,14 +2097,14 @@ body {
 }
 
 .shopping-item__qty {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   text-align: right;
   white-space: nowrap;
 }
 
 .shopping-item__used-in {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1815,17 +2113,25 @@ body {
   white-space: nowrap;
 }
 
+/* Move button ("→ Pantry" / "→ List") — a text action like
+   .meal-card__replace, so it stays hover-only (the always-visible
+   remove buttons are dismiss controls, a different kind). Size and
+   hover match the row remove buttons (11px, 2px 5px, line-height 1,
+   accent on hover). The hover colour itself is set by the dedicated
+   rule with the other removes below, because the generic lenso icon
+   hover would otherwise win on specificity. */
+
 .shopping-item__move-btn {
   flex-shrink: 0;
   background: none;
   border: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 7px 5px;
-  margin: -5px 0;
+  padding: 2px 5px;
   border-radius: 4px;
+  line-height: 1;
   white-space: nowrap;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, background 0.15s;
@@ -1840,149 +2146,10 @@ body {
   background: rgba(192, 57, 43, 0.08);
 }
 
-/* ── Store picker ──────────────────────────────────────────────────────────── */
-
-.kroger-store-picker { display: flex; flex-direction: column; gap: 10px; }
-
-.kroger-store-picker__label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.kroger-store-picker__row {
-  display: flex;
-  gap: 8px;
-}
-
-.kroger-store-picker__input {
-  flex: 1;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.kroger-store-picker__input:focus { border-color: var(--accent); }
-
-.kroger-store-picker__search {
-  padding: 7px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  white-space: nowrap;
-}
-
-.kroger-store-picker__search:hover:not(:disabled) {
-  border-color: var(--accent);
-  background: rgba(192, 57, 43, 0.06);
-}
-
-.kroger-store-picker__search:disabled { opacity: 0.4; cursor: default; }
-
-.kroger-store-picker__error {
-  font-size: 11px;
-  color: var(--accent);
-  margin: 0;
-}
-
-.kroger-store-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.kroger-store-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-  transition: background 0.1s;
-}
-
-.kroger-store-item:last-child { border-bottom: none; }
-.kroger-store-item:hover { background: var(--bg); }
-
-.kroger-store-item__info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-}
-
-.kroger-store-item__name {
-  font-size: 13px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.kroger-store-item__addr {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.kroger-store-item__select {
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  padding: 4px 12px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  white-space: nowrap;
-}
-
-.kroger-store-item__select:hover {
-  border-color: var(--accent);
-  background: rgba(192, 57, 43, 0.06);
-  color: var(--accent);
-}
-
-/* ── Cart section ──────────────────────────────────────────────────────────── */
-
-.kroger-cart-section__loading {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
 .loading-spinner--sm {
   width: 14px;
   height: 14px;
   border-width: 2px;
-}
-
-/* ── Cart result ───────────────────────────────────────────────────────────── */
-
-.kroger-cart-result__added {
-  font-size: 13px;
-  color: #3E9B57;
-  margin: 0;
-}
-
-.kroger-cart-result__error {
-  font-size: 12px;
-  color: var(--accent);
-  margin: 0;
 }
 
 /* ── Loading log (progress history) ──────────────────────────────────────── */
@@ -2019,6 +2186,122 @@ body {
   opacity: 0.55;
 }
 
+/* ── Generation progress panel ───────────────────────────────────────────
+   A Dia-style answer card: white sheet, soft border, generous radius. The
+   timer and day count sit in the header; the per-day checklist reads as a
+   quiet list underneath. */
+
+.gen-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 560px;
+  text-align: left;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 20px 22px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
+}
+
+.gen-progress--compact {
+  max-width: none;
+  padding: 14px 18px;
+  border-radius: 20px;
+}
+
+.gen-progress__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gen-progress__title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gen-progress__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.gen-progress__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-secondary, var(--text));
+}
+
+.gen-progress__phase {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, var(--text));
+}
+
+.gen-progress__days {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gen-progress__day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+
+.gen-progress__day:first-child {
+  border-top: none;
+}
+
+.gen-progress__day--done,
+.gen-progress__day--writing {
+  color: var(--text-secondary, var(--text));
+}
+
+.gen-progress__day--writing {
+  font-weight: 500;
+}
+
+.gen-progress__mark {
+  width: 18px;
+  flex: none;
+  text-align: center;
+}
+
+.gen-progress__day--done .gen-progress__mark {
+  color: #3E9B57;
+}
+
+.gen-progress__spin {
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+.gen-progress__label {
+  flex: 1;
+}
+
+.gen-progress__state {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 /* ── Hamburger button (mobile only) ──────────────────────────────────────── */
 
 .app-header__left {
@@ -2046,12 +2329,13 @@ body {
   display: block;
   width: 100%;
   height: 1.5px;
-  background: var(--text-muted);
+  /* Supaste's hamburger lines are grey on black, not dark. */
+  background: rgba(255, 255, 255, 0.65);
   border-radius: 2px;
   transition: background 0.15s;
 }
 
-.app-header__hamburger:hover span { background: var(--text); }
+.app-header__hamburger:hover span { background: #fff; }
 
 /* ── Sidebar overlay (mobile) ────────────────────────────────────────────── */
 
@@ -2100,28 +2384,36 @@ body {
 
 .sidebar__close:hover { color: var(--text); border-color: var(--text-muted); }
 
-/* ── Calendar scroll wrapper ─────────────────────────────────────────────── */
+/* ── Calendar scroll wrapper ───────────────────────────────────────────────
+   The white document sheet the week is printed on. */
 
 .calendar-wrapper {
   min-width: 0;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  padding: 20px 22px 24px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 var(--glass-rim), var(--glass-shadow);
 }
 
-/* ── btn-primary shared style (used by Kroger connect) ───────────────────── */
+/* ── btn-primary shared style ────────────────────────────────────────────── */
 
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 18px;
+  padding: 10px 22px;
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   font-family: var(--font-sans);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   transition: background 0.15s;
   text-decoration: none;
 }
@@ -2146,6 +2438,13 @@ body {
   /* Show hamburger */
   .app-header__hamburger { display: flex; }
 
+  /* Black bar, two rows on mobile: row 1 is hamburger + wordmark +
+     actions, row 2 is the Pantry / Favorites / Recent Recipes nav, so
+     the three links stay reachable without opening the drawer. */
+  .app-header { flex-wrap: wrap; height: auto; padding: 6px 14px 0; width: min(680px, 100%); margin-top: 0; }
+  .app-header__nav { order: 3; flex: 0 0 100%; justify-content: space-evenly; padding: 4px 0 10px; }
+  .app-header__nav-link { flex: 1; text-align: center; padding: 6px 8px; font-size: 13.5px; }
+
   /* Sidebar: fixed overlay drawer */
   .sidebar-overlay { display: block; }
 
@@ -2153,12 +2452,16 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    height: 100%;
+    /* Floating rounded card (v4): inset from the viewport edges like
+       the desktop card, not a full-height flush drawer. The base
+       margin (12px top/left) plus this height leave a 12px gap at
+       the bottom too. */
+    height: calc(100% - 24px);
     width: min(var(--sidebar-width, 300px), 85vw);
     z-index: 200;
     transform: translateX(-110%);
     transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+    box-shadow: inset 0 1px 0 var(--glass-rim), 4px 0 24px rgba(0, 0, 0, 0.15);
   }
 
   .sidebar--open { transform: translateX(0); }
@@ -2232,15 +2535,10 @@ body {
   .modal__macros { gap: 6px; }
   .modal__macro-pill { min-width: 52px; padding: 5px 8px; }
 
-  /* Shopping list modal: full screen */
-  .modal--shopping-list { max-height: 100dvh; border-radius: 0; }
   .shopping-modal__controls { flex-wrap: wrap; }
 
   /* Product browser: single column */
   .product-browser__grid { grid-template-columns: 1fr; }
-
-  /* Kroger store list: hide address to save space */
-  .kroger-store-item__addr { display: none; }
 
   /* Loading log */
   .loading-log { max-width: 90vw; }
@@ -2253,7 +2551,7 @@ body {
 @media (max-width: 480px) {
   :root { --header-height: 50px; }
 
-  .app-header { padding: 0 14px; }
+  .app-header { padding: 6px 14px 0; }
   .app-header__logo { font-size: 18px; }
 
   .main-panel { padding: 10px; gap: 10px; }
@@ -2331,9 +2629,19 @@ body {
   white-space: nowrap;
 }
 
+/* Selects — the same treatment as the pantry modal's search input
+   (solid surface background, accent border on focus). The transparent
+   background was the only input in the app with no surface behind it,
+   and there was no focus state at all. The chevron is lightened for
+   dark mode (the hardcoded #888 is too dark on the dark surface). */
+
 .shopping-modal__select {
   appearance: none;
-  background: none;
+  -webkit-appearance: none;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 24px 3px 8px;
@@ -2341,41 +2649,38 @@ body {
   font-size: 12px;
   color: var(--text);
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
+  outline: none;
 }
 
-/* Scrollable ingredient list */
+.shopping-modal__select:focus { border-color: var(--accent); }
+
+[data-theme='dark'] .shopping-modal__select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23A39A87'/%3E%3C/svg%3E");
+}
+
+/* Scrollable ingredient list — inset rows like the favorites/blacklist
+   lists (flex column, 2px gap, 24px content inset matching the modal's
+   controls and footer), instead of the full-bleed divider list. */
+
 .shopping-modal__list {
   flex: 1;
   overflow-y: auto;
   list-style: none;
   margin: 0;
-  padding: 0;
-}
-
-/* Store picker & done/error centred in body */
-.shopping-modal__store-picker {
-  padding: 24px;
+  padding: 8px 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
 }
 
-.shopping-modal__done {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px;
-}
+/* Footer — actions right-aligned like .pantry-footer. The status
+   element is gone, so space-between left the actions stranded on the
+   left; flex-end puts them where the other modals put theirs. */
 
-/* Footer — Kroger status on left, actions on right */
 .shopping-modal__footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 16px;
   padding: 12px 24px;
   border-top: 1px solid var(--border);
@@ -2383,50 +2688,11 @@ body {
   flex-wrap: wrap;
 }
 
-.shopping-modal__footer-status {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.footer-status__text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.footer-status__text--dim { opacity: 0.5; }
-
-.footer-status__change {
-  background: none;
-  border: none;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.footer-status__change:hover { color: var(--text); }
-
 .shopping-modal__footer-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-}
-
-.shopping-modal__total {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  white-space: nowrap;
 }
 
 .btn-secondary {
@@ -2444,8 +2710,6 @@ body {
 .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
 
 @media (max-width: 768px) {
-  .modal--shopping-list { max-height: 100dvh; border-radius: 0; }
-  .shopping-modal__controls { flex-wrap: wrap; }
   .shopping-modal__selects { gap: 8px; }
 }
 
@@ -2497,24 +2761,6 @@ body {
   text-decoration: none;
 }
 
-.access-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #3E9B57;
-  border: 1px solid rgba(62, 155, 87, 0.35);
-  border-radius: 20px;
-  white-space: nowrap;
-}
-
-.access-badge--demo {
-  color: var(--text-muted);
-  border-color: var(--border);
-}
-
 .header-action-btn__badge {
   display: inline-flex;
   align-items: center;
@@ -2530,20 +2776,23 @@ body {
 }
 
 @media (max-width: 768px) {
-  /* Unscoped — Pantry/Favorites/Recent Recipes now live in .app-header__left
-     alongside the logo, Help stays in .app-header__actions; both hide on mobile. */
+  /* The header's remaining action buttons (Help) hide on mobile; the
+     Pantry / Favorites / Recent Recipes nav lives in the header now
+     (.app-header__nav), in its own second row on mobile, so this rule
+     no longer touches it. */
   .header-action-btn { display: none; }
 }
 
-/* ── Calendar header (title + shopping list button) ─────────────────────── */
+/* ── Calendar header (title + shopping list button) ───────────────────────
+   The document heading: large serif title on the cream page, actions as
+   pills on the right. The week itself is the white sheet below. */
 
 .calendar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 16px;
+  padding: 8px 4px 0;
   gap: 16px;
-  border-bottom: 1px solid var(--border);
 }
 
 .calendar-header__title-group {
@@ -2563,11 +2812,11 @@ body {
 .calendar-header__title {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: 20px;
+  font-size: 28px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 
 .calendar-header__shopping-btn {
@@ -2673,7 +2922,7 @@ body {
   margin: 4px 8px;
 }
 
-/* ── Product browser (one-ingredient-at-a-time Kroger flow) ─────────────── */
+/* ── Product browser ─────────────────────────────────────────────────────── */
 
 .product-browser {
   display: flex;
@@ -2914,24 +3163,22 @@ body {
 
 .product-card__link:hover { color: var(--accent); text-decoration: underline; }
 
-/* ── Shopping list section dividers (In Cart / In Pantry) ────────────────── */
+/* ── Shopping list section dividers (Checked / In Pantry) ────────────────
+   The app's section-label treatment, same as .modal__section-title
+   (11px, 500, 0.1em, uppercase, muted, bottom border only). The accent
+   colour + tinted background + top border was the only section label in
+   the app that shouted; the --pantry variant is gone too, since both
+   dividers are now the same muted label. */
 
 .shopping-item__section-divider {
   list-style: none;
-  padding: 6px 18px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  padding: 12px 12px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-  border-bottom: 1px solid var(--border);
-  border-top: 1px solid var(--border);
-}
-
-.shopping-item__section-divider--pantry {
   color: var(--text-muted);
-  background: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
 /* ── Confirming summary list ─────────────────────────────────────────────── */
@@ -2951,8 +3198,7 @@ body {
 }
 
 /* A single consolidated bar outside the scroll box, below the list — always
-   visible without needing to scroll. "Manually Review Items" on the left,
-   the Claude-verify controls grouped on the right. */
+   visible without needing to scroll. */
 .review-actions-bar {
   display: flex;
   align-items: center;
@@ -2962,51 +3208,6 @@ body {
   padding: 12px 24px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-}
-
-.claude-verify-bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.claude-verify-bar__toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.claude-direct-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.claude-direct-toggle--locked { opacity: 0.6; }
-
-.claude-verify-bar__btn { white-space: nowrap; }
-
-.claude-verify-bar--used .claude-verify-bar__btn {
-  color: #3E9B57;
-  border-color: rgba(62, 155, 87, 0.35);
-  opacity: 1;
-}
-
-.claude-verify-bar__error {
-  flex-basis: 100%;
-  font-size: 12px;
-  color: var(--accent);
-  padding: 8px 0 0;
-  margin: 0;
 }
 
 .manual-review-bar {
@@ -3260,4 +3461,390 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .tour-spotlight, .tour-tooltip { transition: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LENSO GLASS BUTTONS — experiment (2026-11-16)
+   The lenso-ui GlassButton (github.com/LioRael/lenso-ui), translated into
+   plain CSS — no StyleX, no @lenso/glass, no new dependency.
+   What the source actually is: an Apple Liquid Glass pill — border-radius
+   1000, inline-flex, backdrop blur 15.3px + saturate, a translucent face
+   tint, a bright top rim + dim bottom rim + hairline ring + soft drop shadow
+   (the "small" liquid material), a white wash on hover/active
+   (inset 0 0 0 100vmax), a press scale, and a 2px focus ring.
+   Sizes in the source are sm 28 / md 34 / lg 50px; Forkcast buttons already
+   sit in that range, so no heights were changed — this is visual only.
+   What plain CSS cannot reproduce (not faked): the separately licensed
+   refraction/dispersion optical renderer, the pointer-driven elastic
+   enlargement + spring return, and the press light that follows the pointer
+   (here it is a centred radial wash on :active instead).
+   Revert: git apply -R /tmp/forkcast-lenso-buttons.patch
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Lenso glass base: every button that carries .lenso-btn ──
+   Visual layer only — no width/height/position/padding changes, so no
+   button moves. The top sheen is a background-image so it layers over the
+   variant fills (background-color) without needing a child span. */
+button.lenso-btn {
+  -webkit-backdrop-filter: blur(15.3px) saturate(1.15);
+  backdrop-filter: blur(15.3px) saturate(1.15);
+  border: none;
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .32), rgb(255 255 255 / .05) 45%, transparent 70%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    inset 0 40px 30px -40px rgb(0 0 0 / .10),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .16),
+    inset 0 40px 10px -40px rgb(255 255 255 / .16),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 2px 10px rgb(74 58 32 / .08);
+  font-weight: 500;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow 200ms ease, background-color 200ms ease, background-image 200ms ease, color 200ms ease, transform 120ms ease;
+}
+
+/* ── Prominent (primary actions): near-opaque white glass, coral label —
+   lenso's prominent variant, with the app's coral as the tint. ── */
+button.lenso-btn--prominent {
+  background-color: rgb(255 255 255 / .88);
+  color: var(--accent);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .45),
+    inset 0 -1px 0 rgb(255 255 255 / .25),
+    inset 0 40px 30px -40px rgb(0 0 0 / .08),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .18),
+    inset 0 40px 10px -40px rgb(255 255 255 / .18),
+    0 0 0 .5px rgba(206, 74, 53, .35),
+    0 4px 16px rgba(206, 74, 53, .20);
+}
+button.lenso-btn--prominent:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / .97);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .32), rgb(255 255 255 / .05) 45%, transparent 70%);
+  box-shadow:
+    inset 0 0 0 100vmax rgb(255 255 255 / .34),
+    inset 0 1px 0 rgb(255 255 255 / .45),
+    inset 0 -1px 0 rgb(255 255 255 / .25),
+    0 0 0 .5px rgba(206, 74, 53, .35),
+    0 6px 20px rgba(206, 74, 53, .26);
+}
+
+/* ── Glass (default pill): translucent white fill, ink label. ── */
+button.lenso-btn--glass {
+  background-color: rgb(255 255 255 / .55);
+  color: var(--text);
+  border-radius: 999px;
+}
+button.lenso-btn--glass:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / .78);
+}
+
+/* ── Icon (circular glass): hamburger, help, modal close, star, print,
+   pin/remove, move arrows, stepper, sidebar close. ── */
+button.lenso-btn--icon {
+  background-color: rgb(255 255 255 / .45);
+  color: var(--text-muted);
+  border-radius: 999px;
+}
+button.lenso-btn--icon:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / .7);
+  color: var(--text);
+}
+/* Gold is the star/pin meaning — keep it on hover and when active. */
+button.lenso-btn--icon.modal__star:hover:not(:disabled),
+button.lenso-btn--icon.favorite-item__pin:hover:not(:disabled) { color: #E8A020; }
+button.lenso-btn--icon.modal__star--active,
+button.lenso-btn--icon.favorite-item__pin--active { color: #E8A020; }
+/* Removes (and the shopping list's move button, and the meals stepper)
+   turn coral on hover, as before. This rule has to exist: the generic
+   lenso icon hover wins on specificity over the plain :hover rules, so
+   without it these would hover to the default text colour instead of
+   the accent. */
+button.lenso-btn--icon.blacklist-item__remove:hover:not(:disabled),
+button.lenso-btn--icon.favorite-item__remove:hover:not(:disabled),
+button.lenso-btn--icon.pantry-chip__remove:hover:not(:disabled),
+button.lenso-btn--icon.meals-stepper__btn:hover:not(:disabled),
+button.lenso-btn--icon.shopping-item__move-btn:hover:not(:disabled) { color: var(--accent); }
+
+/* ── Row (full-width list rows): transparent at rest, glass on hover. ── */
+button.lenso-btn--row {
+  background-color: transparent;
+  background-image: none;
+  border-radius: 12px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+button.lenso-btn--row:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / .55);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .32), rgb(255 255 255 / .05) 45%, transparent 70%);
+  -webkit-backdrop-filter: blur(15.3px) saturate(1.15);
+  backdrop-filter: blur(15.3px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 2px 10px rgb(74 58 32 / .08);
+}
+
+/* ── Text (plain text, no glass): text actions like "Select all" read as
+   text only — transparent, no blur, no rim, no shadow, no pill on hover,
+   just the text colour with a subtle opacity + underline hover. The
+   doubled class beats the generic lenso hover/active wash below, which
+   would otherwise win on source order at equal specificity. ── */
+button.lenso-btn--text {
+  background-color: transparent;
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+button.lenso-btn.lenso-btn--text:hover:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-radius: 0;
+  box-shadow: none;
+  opacity: 0.7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+button.lenso-btn.lenso-btn--text:active:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  transform: none;
+  opacity: 0.55;
+}
+/* Tour skip floats over a dark scrim with white text — plain text, no ring. */
+button.lenso-btn--text.tour-skip {
+  color: #fff;
+  box-shadow: none;
+}
+button.lenso-btn--text.tour-skip:hover:not(:disabled) {
+  background-color: transparent;
+  color: #fff;
+  opacity: 0.75;
+}
+
+/* ── Menu (dropdown rows): transparent at rest, glass on hover. ── */
+button.lenso-btn--menu {
+  background-color: transparent;
+  background-image: none;
+  border-radius: 8px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+button.lenso-btn--menu:hover:not(:disabled) {
+  background-color: rgb(255 255 255 / .55);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .32), rgb(255 255 255 / .05) 45%, transparent 70%);
+  -webkit-backdrop-filter: blur(15.3px) saturate(1.15);
+  backdrop-filter: blur(15.3px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 2px 10px rgb(74 58 32 / .08);
+}
+
+/* ── Segmented mode toggle: the group surface is glass. (The active
+   option used to be a pale coral glass pill via
+   button.lenso-btn--glass.mode-toggle__option--active, but the
+   options no longer carry lenso classes, so that rule is gone — the
+   active state is the raised white pill in .mode-toggle__option--active
+   above.) ── */
+.mode-toggle {
+  background-color: rgb(255 255 255 / .35);
+  -webkit-backdrop-filter: blur(15.3px) saturate(1.15);
+  backdrop-filter: blur(15.3px) saturate(1.15);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 2px 10px rgb(74 58 32 / .08);
+}
+
+/* ── Hover wash (lenso's inset 100vmax fill) + a slightly bigger shadow.
+   Variant hovers above only change the fill colour; the wash lives here. ── */
+button.lenso-btn:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 100vmax rgb(255 255 255 / .34),
+    inset 0 1px 0 rgb(255 255 255 / .35),
+    inset 0 -1px 0 rgb(255 255 255 / .22),
+    inset 0 40px 30px -40px rgb(0 0 0 / .10),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .16),
+    inset 0 40px 10px -40px rgb(255 255 255 / .16),
+    0 0 0 .5px rgb(0 0 0 / .12),
+    0 4px 16px rgb(74 58 32 / .12);
+}
+/* Row / text / menu buttons have no shadow at rest, so they need their own
+   wash on hover (the rule above would be overridden by their :hover fill
+   rules only for background — box-shadow is separate, so this stands). */
+
+/* ── Press: a small springy scale + a centred radial press light
+   (lenso's light follows the pointer; plain CSS centres it instead). ── */
+button.lenso-btn:active:not(:disabled) {
+  transform: scale(.97);
+  transition: box-shadow 0ms, background-color 0ms, transform 120ms cubic-bezier(.34, 1.56, .64, 1);
+  background-image:
+    radial-gradient(circle 240px at 50% 50%, rgb(255 255 255 / .4), transparent 70%),
+    linear-gradient(180deg, rgb(255 255 255 / .32), rgb(255 255 255 / .05) 45%, transparent 70%);
+}
+
+/* ── Focus-visible ring (lenso: 2px ring, 3px offset). ── */
+button.lenso-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ── Disabled: no blur, muted fill and label (lenso's disabled material).
+   Opacity is left to each button's own :disabled rule. ── */
+button.lenso-btn:disabled,
+button.lenso-btn[aria-disabled="true"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: rgb(255 255 255 / .35);
+  background-image: none;
+  color: var(--text-muted);
+  box-shadow: 0 0 0 .5px rgb(0 0 0 / .08);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Dark theme: the same glass, dimmer fills and a darker drop shadow.
+   The white rims and the coral label (var(--accent) is brighter in dark)
+   carry over unchanged. ── */
+[data-theme='dark'] button.lenso-btn--prominent { background-color: rgb(255 255 255 / .10); }
+[data-theme='dark'] button.lenso-btn--prominent:hover:not(:disabled) { background-color: rgb(255 255 255 / .16); }
+[data-theme='dark'] button.lenso-btn--glass { background-color: rgb(255 255 255 / .08); }
+[data-theme='dark'] button.lenso-btn--glass:hover:not(:disabled) { background-color: rgb(255 255 255 / .14); }
+[data-theme='dark'] button.lenso-btn--icon { background-color: rgb(255 255 255 / .07); }
+[data-theme='dark'] button.lenso-btn--icon:hover:not(:disabled) { background-color: rgb(255 255 255 / .13); }
+[data-theme='dark'] button.lenso-btn--row:hover:not(:disabled),
+[data-theme='dark'] button.lenso-btn--menu:hover:not(:disabled) { background-color: rgb(255 255 255 / .09); }
+[data-theme='dark'] button.lenso-btn:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 100vmax rgb(255 255 255 / .22),
+    inset 0 1px 0 rgb(255 255 255 / .18),
+    inset 0 -1px 0 rgb(255 255 255 / .10),
+    0 0 0 .5px rgb(255 255 255 / .10),
+    0 4px 16px rgb(0 0 0 / .40);
+}
+[data-theme='dark'] .mode-toggle { background-color: rgb(255 255 255 / .06); }
+
+/* ── Dark theme, text variant: plain text, no glass ────────────────────────
+   The dark sheen rule below ([data-theme='dark'] button.lenso-btn) would
+   otherwise give text buttons a sheen and rims even at rest, and the dark
+   hover wash would re-add them on hover. These re-assert plain text. ── */
+[data-theme='dark'] button.lenso-btn.lenso-btn--text {
+  background-color: transparent;
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+}
+[data-theme='dark'] button.lenso-btn.lenso-btn--text:hover:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  opacity: 0.7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+[data-theme='dark'] button.lenso-btn.lenso-btn--text:active:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  transform: none;
+  opacity: 0.55;
+}
+[data-theme='dark'] button.lenso-btn--text.tour-skip:hover:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+/* ── Dark theme, toned down further ────────────────────────────────────────
+   The base glass carries a bright white top sheen (0.32) and bright rims
+   (0.35 top / 0.22 bottom) that glare on a dark page, and the fills above
+   only dim the background colour — the sheen and rims stay loud. Here the
+   sheen and rims drop to a whisper, the hover wash halves, icon labels go
+   full-strength text for contrast, and disabled buttons stop glowing. ── */
+[data-theme='dark'] button.lenso-btn {
+  background-image: linear-gradient(180deg, rgb(255 255 255 / .14), rgb(255 255 255 / .03) 45%, transparent 70%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .14),
+    inset 0 -1px 0 rgb(255 255 255 / .08),
+    inset 0 40px 30px -40px rgb(0 0 0 / .10),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .08),
+    inset 0 40px 10px -40px rgb(255 255 255 / .08),
+    0 0 0 .5px rgb(255 255 255 / .08),
+    0 2px 10px rgb(0 0 0 / .35);
+}
+[data-theme='dark'] button.lenso-btn--icon { color: var(--text); }
+[data-theme='dark'] button.lenso-btn--prominent {
+  background-color: rgb(255 255 255 / .14);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .20),
+    inset 0 -1px 0 rgb(255 255 255 / .10),
+    inset 0 40px 30px -40px rgb(0 0 0 / .08),
+    inset 0 -40px 10px -40px rgb(255 255 255 / .08),
+    inset 0 40px 10px -40px rgb(255 255 255 / .08),
+    0 0 0 .5px rgba(224, 101, 79, .35),
+    0 4px 16px rgb(0 0 0 / .35);
+}
+[data-theme='dark'] button.lenso-btn:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 0 100vmax rgb(255 255 255 / .12),
+    inset 0 1px 0 rgb(255 255 255 / .18),
+    inset 0 -1px 0 rgb(255 255 255 / .10),
+    0 0 0 .5px rgb(255 255 255 / .10),
+    0 4px 16px rgb(0 0 0 / .40);
+}
+[data-theme='dark'] button.lenso-btn:disabled,
+[data-theme='dark'] button.lenso-btn[aria-disabled="true"] {
+  background-color: rgb(255 255 255 / .10);
+  box-shadow: 0 0 0 .5px rgb(255 255 255 / .08);
+}
+
+/* ── Reduced transparency: solid fills, no blur (lenso's accessible
+   material does the same). ── */
+@media (prefers-reduced-transparency: reduce) {
+  button.lenso-btn,
+  button.lenso-btn--row:hover:not(:disabled),
+  button.lenso-btn--menu:hover:not(:disabled) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  button.lenso-btn--prominent,
+  button.lenso-btn--glass,
+  button.lenso-btn--icon { background-color: var(--bg-card); }
+  button.lenso-btn--row:hover:not(:disabled),
+  button.lenso-btn--menu:hover:not(:disabled) { background-color: var(--bg-hover); }
+}
+
+/* ── Forced colours: drop the glass, keep a visible ring. ── */
+@media (forced-colors: active) {
+  button.lenso-btn {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-image: none;
+    outline: 1px solid ButtonText;
+  }
+  button.lenso-btn:focus-visible { outline: 2px solid ButtonText; }
+}
+
+/* ── Reduced motion: no press scale. ── */
+@media (prefers-reduced-motion: reduce) {
+  button.lenso-btn { transition: none; }
+  button.lenso-btn:active:not(:disabled) { transform: none; }
 }

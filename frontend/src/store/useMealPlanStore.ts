@@ -6,6 +6,7 @@ import { usePreferencesStore, todayISO, type Preferences } from './usePreference
 import { usePantryStore, type PantryItem } from './usePantryStore';
 import { useUsageStore } from './useUsageStore';
 import { canonicalIngredientKey, cleanIngredientName } from '../utils/ingredientKey';
+import { getPlannedDays, type PlannedDay } from '../utils/generationProgress';
 
 function toTitleCase(str: string): string {
   return str.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -126,6 +127,12 @@ interface MealPlanState {
   isLoading: boolean;
   progressMessage: string;
   error: string | null;
+  // Live generation progress (in-memory only, not persisted): when the
+  // current generation started, and the days it will produce (from the
+  // request's start date + day count). Empty for regeneration, which has
+  // no day list.
+  generationStartedAt: number | null;
+  plannedDays: PlannedDay[];
   blacklist: BlacklistEntry[];
   favorites: FavoriteEntry[];
   pinnedFavoriteIds: string[];
@@ -181,6 +188,8 @@ export const useMealPlanStore = create<MealPlanState>()(
       mealPlan: null,
       isLoading: false,
       progressMessage: '',
+      generationStartedAt: null,
+      plannedDays: [],
       error: null,
       blacklist: [],
       favorites: [],
@@ -191,9 +200,22 @@ export const useMealPlanStore = create<MealPlanState>()(
       checkedItems: [],
 
       generate: async () => {
-        set({ isLoading: true, progressMessage: '', error: null });
+        // Clear the old plan up front: days arriving below build a fresh
+        // partial plan, and the checked-off shopping items belong to the
+        // previous plan. Record when generation started and the days this
+        // request will produce, so the progress panel can render before
+        // the first day arrives.
+        const prefs = usePreferencesStore.getState();
+        set({
+          isLoading: true,
+          progressMessage: '',
+          error: null,
+          mealPlan: null,
+          checkedItems: [],
+          generationStartedAt: Date.now(),
+          plannedDays: getPlannedDays(prefs.startDate || todayISO(), prefs.numDays),
+        });
         try {
-          const prefs = usePreferencesStore.getState();
           const now = Date.now();
           const { blacklist, pinnedFavoriteIds, favorites } = get();
 
@@ -209,7 +231,34 @@ export const useMealPlanStore = create<MealPlanState>()(
             pinnedRecipes: pinnedRecipes.length > 0 ? pinnedRecipes : undefined,
           });
 
-          const fetched = await fetchMealPlan(payload, (msg) => set({ progressMessage: msg }));
+          // Days arrive in completion order (the backend writes two at a
+          // time), so insert each one sorted by date. The shopping list is
+          // rebuilt from the days seen so far. The final `done` event still
+          // replaces this partial plan with the full ordered one below.
+          const onDay = (day: DayPlan) => {
+            const current = get().mealPlan;
+            const days = [...(current?.mealPlan ?? [])];
+            const existing = days.findIndex((d) => d.date === day.date);
+            if (existing >= 0) {
+              days[existing] = day;
+            } else {
+              days.push(day);
+              days.sort((a, b) => a.date.localeCompare(b.date));
+            }
+            set({
+              mealPlan: {
+                weekOf: days[0]?.date ?? day.date,
+                mealPlan: days,
+                shoppingList: buildShoppingList(days, usePantryStore.getState().pantry),
+              },
+            });
+          };
+
+          const fetched = await fetchMealPlan(
+            payload,
+            (msg) => set({ progressMessage: msg }),
+            onDay
+          );
 
           // Build the shopping list on the client so it always respects the pantry.
           const mealPlan: MealPlan = {
@@ -226,6 +275,8 @@ export const useMealPlanStore = create<MealPlanState>()(
             mealPlan,
             isLoading: false,
             progressMessage: '',
+            generationStartedAt: null,
+            plannedDays: [],
             pinnedFavoriteIds: [],
             recentlyRegenerated: [],
             shoppingListStale: false,
@@ -236,6 +287,8 @@ export const useMealPlanStore = create<MealPlanState>()(
             error: err instanceof Error ? err.message : 'Something went wrong',
             isLoading: false,
             progressMessage: '',
+            generationStartedAt: null,
+            plannedDays: [],
           });
         } finally {
           useUsageStore.getState().refresh();
@@ -246,7 +299,9 @@ export const useMealPlanStore = create<MealPlanState>()(
         const { mealPlan, regenSelection } = get();
         if (!mealPlan || regenSelection.length === 0) return;
 
-        set({ isLoading: true, progressMessage: '', error: null });
+        // No day list for regeneration: the progress panel shows the phase
+        // and timer only.
+        set({ isLoading: true, progressMessage: '', error: null, generationStartedAt: Date.now(), plannedDays: [] });
         try {
           const prefs = usePreferencesStore.getState();
           const now = Date.now();
@@ -337,6 +392,7 @@ export const useMealPlanStore = create<MealPlanState>()(
             mealPlan: updatedPlan,
             isLoading: false,
             progressMessage: '',
+            generationStartedAt: null,
             regenSelection: [],
             recentlyRegenerated: Array.from(new Set([...s.recentlyRegenerated, ...newlyRegeneratedKeys])),
             shoppingListStale: false,
@@ -346,6 +402,7 @@ export const useMealPlanStore = create<MealPlanState>()(
             error: err instanceof Error ? err.message : 'Something went wrong',
             isLoading: false,
             progressMessage: '',
+            generationStartedAt: null,
           });
         } finally {
           useUsageStore.getState().refresh();

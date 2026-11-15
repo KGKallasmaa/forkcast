@@ -4,7 +4,7 @@ export default function themeToggle() {
   const { theme, toggleTheme } = useThemeStore();
   return (
     <button
-      className={`theme-toggle theme-toggle--${theme}`}
+      className={`theme-toggle lenso-btn theme-toggle--${theme}`}
       onClick={toggleTheme}
       aria-label="Toggle theme"
     >

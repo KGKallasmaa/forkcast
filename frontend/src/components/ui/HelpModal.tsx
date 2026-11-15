@@ -33,7 +33,7 @@ const FEATURES = [
   },
   {
     title: 'Shopping list',
-    body: 'Every plan comes with a combined shopping list and running total. Connect Kroger to add items straight to your cart, or manually review and swap products yourself.',
+    body: 'Every plan comes with a combined shopping list and running total. Review and swap products yourself, or export the list as a PDF.',
   },
   {
     title: 'Pantry',
@@ -54,7 +54,7 @@ const STEPS = [
   { n: '2', heading: 'Generate', body: 'Click Generate Meal Plan. forkcastAI plans your week, searches real recipe sites, and writes full recipes in parallel.' },
   { n: '3', heading: 'Browse your plan', body: 'Click any meal card to open the full recipe — ingredients, steps, macros, and a link to the source site.' },
   { n: '4', heading: 'Refine', body: 'Star meals to save them as favorites. Select unwanted slots and click Regenerate to swap them out.' },
-  { n: '5', heading: 'Shop', body: 'Open the Shopping List to review everything you need and see the total. Connect Kroger to add items to your cart in one click, or manually review items yourself.' },
+  { n: '5', heading: 'Shop', body: 'Open the Shopping List to review everything you need and see the total. Export it as a PDF, or add items to your cart manually.' },
 ];
 
 export default function HelpModal({ onClose, onRestartTour }: Props) {
@@ -84,7 +84,7 @@ export default function HelpModal({ onClose, onRestartTour }: Props) {
             <h2 className="help-modal__title">forkcastAI</h2>
             <p className="help-modal__subtitle">Smart meal planning, powered by AI</p>
           </div>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="help-modal__body">
@@ -118,16 +118,16 @@ export default function HelpModal({ onClose, onRestartTour }: Props) {
             </ol>
           </section>
 
-          <button className="help-modal__learn-more" onClick={() => setShowHowItWorks(true)}>
+          <button className="help-modal__learn-more lenso-btn lenso-btn--text" onClick={() => setShowHowItWorks(true)}>
             How does recipe generation and shopping matching actually work? →
           </button>
         </div>
 
         <div className="help-modal__footer">
-          <button className="help-modal__restart-tour" onClick={onRestartTour}>
+          <button className="help-modal__restart-tour lenso-btn lenso-btn--glass" onClick={onRestartTour}>
             ↻ Restart tutorial
           </button>
-          <button className="btn-primary" onClick={onClose}>Get started</button>
+          <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={onClose}>Get started</button>
         </div>
       </div>
       {showHowItWorks && <HowItWorksModal onClose={() => setShowHowItWorks(false)} />}

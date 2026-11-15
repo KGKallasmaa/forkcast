@@ -45,7 +45,7 @@ export default function RateLimitModal({ resetAt, onClose }: Props) {
         aria-label="Usage limit reached"
       >
         <div className="modal__header" style={{ justifyContent: 'flex-end' }}>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="modal__body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', paddingTop: 0 }}>
@@ -60,7 +60,7 @@ export default function RateLimitModal({ resetAt, onClose }: Props) {
                 <>
                   forkcastAI is a demo that uses paid AI APIs. You're in <strong>Demo Mode</strong>, limited to{' '}
                   <strong>2 requests per day</strong>. Full Access — ask whoever shared this app with you —
-                  raises that to 10/day and also unlocks Claude-assisted shopping-list matching.
+                  raises that to 10/day and also unlocks Gemini-assisted shopping-list matching.
                 </>
               )}
             </p>
@@ -80,7 +80,7 @@ export default function RateLimitModal({ resetAt, onClose }: Props) {
             You can still browse your existing meal plan, favorites, shopping list, and all other features.
           </p>
 
-          <button className="btn-primary" onClick={onClose} style={{ width: '100%' }}>
+          <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={onClose} style={{ width: '100%' }}>
             Got it
           </button>
         </div>

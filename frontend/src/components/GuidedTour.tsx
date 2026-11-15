@@ -180,9 +180,9 @@ export default function GuidedTour({ onFinish, sidebarOpen, onOpenSidebar, onClo
       </div>
       <div className="tour-tooltip__btns">
         {current > 0 && (
-          <button className="tour-btn tour-btn--ghost" onClick={back}>Back</button>
+          <button className="tour-btn tour-btn--ghost lenso-btn lenso-btn--glass" onClick={back}>Back</button>
         )}
-        <button className="tour-btn tour-btn--primary" onClick={next}>
+        <button className="tour-btn tour-btn--primary lenso-btn lenso-btn--prominent" onClick={next}>
           {current === 0 ? 'Let’s go' : current === STEPS.length - 1 ? 'Finish' : 'Next'}
         </button>
       </div>
@@ -195,7 +195,7 @@ export default function GuidedTour({ onFinish, sidebarOpen, onOpenSidebar, onClo
     return (
       <div className="tour-scrim">
         <div className="tour-dim" />
-        <button className="tour-skip" onClick={skip}>Skip tour ✕</button>
+        <button className="tour-skip lenso-btn lenso-btn--text" onClick={skip}>Skip tour ✕</button>
         <div className="tour-tooltip tour-tooltip--welcome">
           {step.selector && (
             <span className="tour-tooltip__eyebrow">Step {realStepIndex + 1} of {REAL_STEP_COUNT}</span>
@@ -255,7 +255,7 @@ export default function GuidedTour({ onFinish, sidebarOpen, onOpenSidebar, onClo
 
   return (
     <div className="tour-scrim">
-      <button className="tour-skip" onClick={skip}>Skip tour ✕</button>
+      <button className="tour-skip lenso-btn lenso-btn--text" onClick={skip}>Skip tour ✕</button>
       <div className="tour-spotlight" style={spotlightStyle} />
       <div
         className="tour-tooltip"

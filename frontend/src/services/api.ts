@@ -1,19 +1,23 @@
 import type { MealPlanRequest } from '../store/useMealPlanStore';
-import type { MealPlan, Recipe } from '../types/mealPlan';
+import type { DayPlan, MealPlan, Recipe } from '../types/mealPlan';
 
 const BASE = '';
 
 interface SseEvent {
-    type: 'progress' | 'done' | 'error';
+    type: 'progress' | 'day' | 'done' | 'error';
     message?: string;
     success?: boolean;
     data?: unknown;
+    day?: DayPlan;
     error?: string;
 }
 
 async function streamRequest<T>(
   payload: MealPlanRequest,
-  onProgress: (msg: string) => void
+  onProgress: (msg: string) => void,
+  // Fires for each day as the backend finishes writing it, so the UI can
+  // render days as they arrive. Regeneration never sends day events.
+  onDay?: (day: DayPlan) => void
 ): Promise<T> {
   const res = await fetch(`${BASE}/api/meal-plan`, {
     method: 'POST',
@@ -58,6 +62,8 @@ async function streamRequest<T>(
 
       if (event.type === 'progress' && event.message) {
         onProgress(event.message);
+      } else if (event.type === 'day' && event.day) {
+        onDay?.(event.day);
       } else if (event.type === 'done') {
         if (!event.success) throw new Error(event.error ?? 'Generation failed');
         return event.data as T;
@@ -72,9 +78,10 @@ async function streamRequest<T>(
 
 export async function fetchMealPlan(
   payload: MealPlanRequest,
-  onProgress: (msg: string) => void
+  onProgress: (msg: string) => void,
+  onDay?: (day: DayPlan) => void
 ): Promise<MealPlan> {
-  return streamRequest<MealPlan>(payload, onProgress);
+  return streamRequest<MealPlan>(payload, onProgress, onDay);
 }
 
 export interface RegenMeal {

@@ -113,7 +113,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
       <div ref={scrollRef} className="sidebar__scroll">
       <div className="sidebar__header">
         <h1 className="sidebar__title">Preferences</h1>
-        <button className="sidebar__close" aria-label="Close menu" onClick={onClose}>✕</button>
+        <button className="sidebar__close lenso-btn lenso-btn--icon" aria-label="Close menu" onClick={onClose}>✕</button>
       </div>
 
       <div className="sidebar-section">
@@ -141,7 +141,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         <span className="mode-toggle__hint">
           {prefs.searchMode === 'web'
             ? 'Finds real recipes from cooking sites.'
-            : "Claude invents recipes from its own training — faster, but not sourced from the web."}
+            : "Gemini writes recipes from its own training — faster, but not sourced from the web."}
         </span>
       </div>
 
@@ -154,13 +154,13 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         <span className="sidebar-section__label">Meals per Day</span>
         <div className="meals-stepper">
           <button
-            className="meals-stepper__btn"
+            className="meals-stepper__btn lenso-btn lenso-btn--icon"
             onClick={() => prefs.set({ mealsPerDay: Math.max(1, prefs.mealsPerDay - 1) })}
             disabled={prefs.mealsPerDay <= 1}
           >−</button>
           <span className="meals-stepper__value">{prefs.mealsPerDay}</span>
           <button
-            className="meals-stepper__btn"
+            className="meals-stepper__btn lenso-btn lenso-btn--icon"
             onClick={() => prefs.set({ mealsPerDay: Math.min(6, prefs.mealsPerDay + 1) })}
             disabled={prefs.mealsPerDay >= 6}
           >+</button>
@@ -171,7 +171,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         <div className="sidebar-section__header">
           <span className="sidebar-section__label">Cuisine</span>
           <button
-            className="shopping-list__toggle-all"
+            className="shopping-list__toggle-all lenso-btn lenso-btn--text"
             onClick={() => prefs.set({ cuisines: prefs.cuisines.length === CUISINES.length ? [] : CUISINES })}
           >
             {prefs.cuisines.length === CUISINES.length ? 'Deselect all' : 'Select all'}
@@ -312,7 +312,7 @@ export default function Sidebar({ isOpen, onClose }: Props) {
         {usage.remaining} of {usage.limit} generation{usage.limit === 1 ? '' : 's'} left today
       </div>
 
-      <button className="btn-generate" onClick={generate} disabled={isLoading} data-tour="generate-btn">
+      <button className="btn-generate lenso-btn lenso-btn--prominent" onClick={generate} disabled={isLoading} data-tour="generate-btn">
         {isLoading ? 'Generating…' : 'Generate Meal Plan'}
       </button>
       </div>

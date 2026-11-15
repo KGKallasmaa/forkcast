@@ -16,6 +16,6 @@ export const useThemeStore = create<ThemeState>()(
         set({ theme: next });
       },
     }),
-    { name: 'forkcastai-theme' }
+    { name: 'forkcastai-theme-v2' }
   )
 );

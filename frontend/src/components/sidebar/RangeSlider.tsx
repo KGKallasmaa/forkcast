@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 interface Props {
   label: string;
   value: number;
@@ -10,6 +12,9 @@ interface Props {
 }
 
 export default function RangeSlider({ label, value, min, max, step = 1, unit, prefix = '≤', onChange }: Props) {
+  // Fill percentage for the track gradient (set as a CSS custom
+  // property — presentational only, no logic change).
+  const pct = ((value - min) / (max - min)) * 100;
   return (
     <div className="range-slider">
       <div className="range-slider__header">
@@ -22,6 +27,7 @@ export default function RangeSlider({ label, value, min, max, step = 1, unit, pr
         max={max}
         step={step}
         value={value}
+        style={{ '--fill': `${pct}%` } as CSSProperties}
         onChange={(e) => onChange(Number(e.target.value))}
       />
     </div>

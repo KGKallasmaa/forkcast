@@ -137,12 +137,12 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
               {nonPantryItems.length} to buy · {remaining.length} remaining
             </p>
           </div>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="shopping-modal__body">
           <div className="shopping-modal__controls">
-            <button className="shopping-list__toggle-all" onClick={toggleAll} disabled={nonPantryItems.length === 0}>
+            <button className="shopping-list__toggle-all lenso-btn lenso-btn--text" onClick={toggleAll} disabled={nonPantryItems.length === 0}>
               {allNonPantryChecked ? 'Deselect all' : 'Select all'}
             </button>
             <div className="shopping-modal__selects">
@@ -198,7 +198,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
                       <span className="shopping-item__name">{item.displayName}</span>
                       {status === 'todo' ? (
                         <button
-                          className="shopping-item__move-btn"
+                          className="shopping-item__move-btn lenso-btn lenso-btn--icon"
                           onClick={(e) => { e.stopPropagation(); moveToPantry(item); }}
                           title="I already have this"
                         >
@@ -206,7 +206,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
                         </button>
                       ) : (
                         <button
-                          className="shopping-item__move-btn"
+                          className="shopping-item__move-btn lenso-btn lenso-btn--icon"
                           onClick={(e) => { e.stopPropagation(); moveToList(item); }}
                           title="Move back to the to-buy list"
                         >
@@ -240,10 +240,10 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
 
         <div className="shopping-modal__footer">
           <div className="shopping-modal__footer-actions">
-            <button className="btn-secondary" onClick={copyList} disabled={remaining.length === 0}>
+            <button className="btn-secondary lenso-btn lenso-btn--glass" onClick={copyList} disabled={remaining.length === 0}>
               {copied ? 'Copied ✓' : 'Copy list'}
             </button>
-            <button className="btn-primary" onClick={onClose}>Done</button>
+            <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={onClose}>Done</button>
           </div>
         </div>
       </div>

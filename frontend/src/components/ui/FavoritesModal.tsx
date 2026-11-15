@@ -25,7 +25,7 @@ function FavoriteRow({ entry, isPinned, onPin, onRemove, onView }: {
 }) {
   return (
     <li className="favorite-item">
-      <button className="favorite-item__info" onClick={onView} title="View full recipe">
+      <button className="favorite-item__info lenso-btn lenso-btn--row" onClick={onView} title="View full recipe">
         <span className="favorite-item__name">{entry.recipe.name}</span>
         <span className="favorite-item__meta">
           {MEAL_TYPE_LABELS[entry.mealType] ?? entry.mealType} · {entry.recipe.cuisine}
@@ -33,14 +33,14 @@ function FavoriteRow({ entry, isPinned, onPin, onRemove, onView }: {
       </button>
       <div className="favorite-item__actions">
         <button
-          className={`favorite-item__pin${isPinned ? ' favorite-item__pin--active' : ''}`}
+          className={`favorite-item__pin lenso-btn lenso-btn--icon${isPinned ? ' favorite-item__pin--active' : ''}`}
           onClick={onPin}
           title={isPinned ? 'Remove from next plan' : 'Include in next plan'}
         >
           {isPinned ? 'Pinned ★' : 'Pin ☆'}
         </button>
         <button
-          className="favorite-item__remove"
+          className="favorite-item__remove lenso-btn lenso-btn--icon"
           onClick={onRemove}
           aria-label={`Remove ${entry.recipe.name} from favorites`}
         >
@@ -89,7 +89,7 @@ export default function FavoritesModal({ onClose }: Props) {
                   : 'Pin recipes to include them in your next plan.'}
             </p>
           </div>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="modal__body">

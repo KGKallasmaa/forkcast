@@ -31,7 +31,7 @@ function baseClean(name: string): string {
 
 // Recipe-speak vs. retail-speak naming differences — the same real ingredient is
 // often described differently in a recipe than it's labeled at the store. Shared
-// between the shopping-list merge key below and the Kroger product-match scorer,
+// between the shopping-list merge key below and the grocery product-match scorer,
 // so "scallion" and "green onion" are treated as the same ingredient in both
 // places. Not exhaustive — extend as new mismatches turn up.
 const INGREDIENT_ALIASES: [RegExp, string][] = [
@@ -62,7 +62,7 @@ export function normalizeIngredientAliases(text: string): string {
 }
 
 // Naive singular-only normalization for a single word (no qualifier-dropping) —
-// used where callers tokenize text into individual words, e.g. Kroger
+// used where callers tokenize text into individual words, e.g. grocery
 // product-description word-overlap scoring, where stripping a standalone
 // "virgin" would corrupt matching rather than help it.
 export function singularize(n: string): string {

@@ -17,7 +17,7 @@ export default function App() {
   const theme = useThemeStore((s) => s.theme);
   const error = useMealPlanStore((s) => s.error);
   const clearError = useMealPlanStore((s) => s.clearError);
-  const trustedAccess = useAccessStore((s) => s.trusted);
+  const initializeAccess = useAccessStore((s) => s.initialize);
 
   const isRateLimited = error?.startsWith('RATE_LIMITED:') ?? false;
   const rateLimitResetAt = isRateLimited ? parseInt(error!.split(':')[1]) : 0;
@@ -43,6 +43,15 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // The access store is still initialized on mount: the RateLimitModal
+  // reads `trusted` to pick its message (2 requests/day vs 10 with
+  // Full Access), so without this call it would always show the
+  // untrusted wording even for a trusted browser. There is no visible
+  // access badge in the header anymore.
+  useEffect(() => {
+    initializeAccess();
+  }, [initializeAccess]);
+
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 769px)');
     const handler = (e: MediaQueryListEvent) => { if (e.matches) setSidebarOpen(false); };
@@ -55,55 +64,49 @@ export default function App() {
       <header className="app-header">
         <div className="app-header__left">
           <button
-            className="app-header__hamburger"
+            className="app-header__hamburger lenso-btn lenso-btn--icon"
             aria-label="Open menu"
             onClick={() => setSidebarOpen(true)}
           >
             <span /><span /><span />
           </button>
-          <div className="app-header__wordmark">
+          <span className="app-header__wordmark">
             <img src="/favicon.svg" alt="" className="app-header__logo-mark" />
             <span className="app-header__logo">forkcastAI</span>
-          </div>
+          </span>
+        </div>
+
+        <nav className="app-header__nav" aria-label="Library">
           <button
-            className="header-action-btn"
+            type="button"
+            className="app-header__nav-link"
             onClick={() => setShowPantry(true)}
             data-tour="pantry-btn"
           >
             Pantry
           </button>
           <button
-            className="header-action-btn"
+            type="button"
+            className="app-header__nav-link"
             onClick={() => setShowFavorites(true)}
             data-tour="favorites-btn"
           >
             Favorites
           </button>
           <button
-            className="header-action-btn"
+            type="button"
+            className="app-header__nav-link"
             onClick={() => setShowBlacklist(true)}
             data-tour="blacklist-btn"
           >
             Recent Recipes
           </button>
-        </div>
+        </nav>
 
         <div className="app-header__actions">
-          {trustedAccess ? (
-            <span className="access-badge" title="10 AI requests per day, plus Claude-assisted shopping matching, enabled for this browser">
-              Full Access
-            </span>
-          ) : (
-            <span
-              className="access-badge access-badge--demo"
-              title="Limited to 2 AI requests per day and the automatic shopping-match algorithm only. Ask whoever shared this app with you for a Full Access link."
-            >
-              Demo Mode
-            </span>
-          )}
           <ThemeToggle />
           <button
-            className="header-action-btn header-action-btn--help"
+            className="header-action-btn header-action-btn--help lenso-btn lenso-btn--icon"
             onClick={() => setShowHelp(true)}
             aria-label="Help"
             data-tour="help-btn"
@@ -111,13 +114,27 @@ export default function App() {
             ?
           </button>
         </div>
+
+        <span className="app-header__notch-corner app-header__notch-corner--left" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M 0 0 L 20 0 C 8.954 0 0 8.954 0 20 Z" fill="#000000" />
+          </svg>
+        </span>
+        <span className="app-header__notch-corner app-header__notch-corner--right" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M 0 0 L 20 0 C 8.954 0 0 8.954 0 20 Z" fill="#000000" />
+          </svg>
+        </span>
       </header>
 
       <div className="app-body">
         {sidebarOpen && (
           <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
         )}
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
         <MealPlanView />
       </div>
 

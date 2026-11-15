@@ -126,7 +126,7 @@ export default function PantryModal({ onClose }: Props) {
                 : `${pantry.length} ingredient${pantry.length === 1 ? '' : 's'} on hand`}
             </p>
           </div>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="pantry-search-bar">
@@ -160,7 +160,7 @@ export default function PantryModal({ onClose }: Props) {
             )}
           </div>
           {query.trim() && !suggestions.some((s) => s.name.toLowerCase() === query.toLowerCase().trim()) && (
-            <button className="pantry-search-bar__add-btn" onClick={() => addItem(query)}>
+            <button className="pantry-search-bar__add-btn lenso-btn lenso-btn--prominent" onClick={() => addItem(query)}>
               Add "{query.trim()}"
             </button>
           )}
@@ -210,7 +210,7 @@ export default function PantryModal({ onClose }: Props) {
                             >
                               {item.name}
                               <button
-                                className="pantry-chip__remove"
+                                className="pantry-chip__remove lenso-btn lenso-btn--icon"
                                 onClick={() => removeFromPantry(item.name)}
                                 aria-label={`Remove ${item.name}`}
                               >
@@ -224,7 +224,7 @@ export default function PantryModal({ onClose }: Props) {
                 })}
               </div>
               <div className="pantry-footer">
-                <button className="blacklist-clear" onClick={clearPantry}>
+                <button className="blacklist-clear lenso-btn lenso-btn--glass" onClick={clearPantry}>
                   Clear All
                 </button>
               </div>

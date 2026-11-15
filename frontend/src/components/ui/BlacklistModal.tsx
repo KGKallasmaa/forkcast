@@ -45,7 +45,7 @@ export default function BlacklistModal({ onClose }: Props) {
                 : `${active.length} recipe${active.length === 1 ? '' : 's'} will be excluded from new plans for up to 4 weeks.`}
             </p>
           </div>
-          <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+          <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
         <div className="modal__body">
@@ -63,7 +63,7 @@ export default function BlacklistModal({ onClose }: Props) {
                       Expires in {daysRemaining(entry)}d
                     </span>
                     <button
-                      className="blacklist-item__remove"
+                      className="blacklist-item__remove lenso-btn lenso-btn--icon"
                       onClick={() => removeFromBlacklist(entry.id)}
                       aria-label={`Remove ${entry.name} from blacklist`}
                     >
@@ -74,7 +74,7 @@ export default function BlacklistModal({ onClose }: Props) {
               </ul>
 
               <button
-                className="blacklist-clear"
+                className="blacklist-clear lenso-btn lenso-btn--glass"
                 onClick={() => { clearBlacklist(); onClose(); }}
               >
                 Clear All

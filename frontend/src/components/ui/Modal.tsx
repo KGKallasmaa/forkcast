@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Recipe } from '../../types/mealPlan';
 import { useMealPlanStore } from '../../store/useMealPlanStore';
 import { exportSingleRecipePDF } from '../../utils/exportMealPlan';
@@ -36,9 +37,16 @@ export default function Modal({ recipe, mealType, onClose }: Props) {
   const totalTime = recipe.prepTime + recipe.cookTime;
   const label = MEAL_TYPE_LABELS[mealType] ?? mealType;
 
-  return (
+  // Portal to document.body: this modal is opened from inside a meal
+  // card, and the card's backdrop-filter (a stacking context) plus its
+  // :hover transform (a containing block for fixed descendants) trap a
+  // fixed overlay — the sticky navbar then paints above the modal, and
+  // the backdrop gets positioned relative to the card instead of the
+  // viewport, so the modal's top hides behind the navbar and its bottom
+  // runs off-screen. Mounting at body level escapes the card entirely.
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+      <div className="modal modal--recipe" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
 
         <div className="modal__header">
           <div className="modal__title-group">
@@ -58,21 +66,21 @@ export default function Modal({ recipe, mealType, onClose }: Props) {
           </div>
           <div className="modal__header-actions">
             <button
-              className={`modal__star${isFavorited ? ' modal__star--active' : ''}`}
+              className={`modal__star lenso-btn lenso-btn--icon${isFavorited ? ' modal__star--active' : ''}`}
               onClick={() => toggleFavorite(recipe, mealType)}
               aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
             >
               {isFavorited ? '★' : '☆'}
             </button>
             <button
-              className="modal__print-btn"
+              className="modal__print-btn lenso-btn lenso-btn--icon"
               onClick={() => exportSingleRecipePDF(recipe, mealType)}
               aria-label="Print recipe"
               title="Print recipe"
             >
               ⎙
             </button>
-            <button className="modal__close" onClick={onClose} aria-label="Close">✕</button>
+            <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
 
@@ -148,6 +156,7 @@ export default function Modal({ recipe, mealType, onClose }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

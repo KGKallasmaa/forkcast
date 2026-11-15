@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMealPlanStore } from '../store/useMealPlanStore';
 import DayColumn from './mealplan/DayColumn';
+import GenerationProgress from './GenerationProgress';
 import ShoppingListModal from './ui/ShoppingListModal';
+import { formatError } from '../utils/formatError';
 import {
   exportToICS,
   exportSchedulePDF,
@@ -24,23 +26,16 @@ function formatWeekRange(weekOf: string): string {
 export default function MealPlanView() {
   const {
     mealPlan, isLoading, progressMessage, error, clearError,
+    generationStartedAt, plannedDays,
     regenSelection, regenerateSelected, clearRegenSelection,
   } = useMealPlanStore();
 
-  const [messageLog, setMessageLog] = useState<string[]>([]);
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!isLoading) {
-      setMessageLog([]);
-      return;
-    }
-    if (progressMessage) {
-      setMessageLog((prev) => [...prev.slice(-4), progressMessage]);
-    }
-  }, [progressMessage, isLoading]);
+  // Dates of the days that have already arrived, for the progress panel.
+  const arrivedDates = (mealPlan?.mealPlan ?? []).map((d) => d.date);
 
   useEffect(() => {
     if (!showExportMenu) return;
@@ -53,37 +48,35 @@ export default function MealPlanView() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [showExportMenu]);
 
-  if (isLoading) {
+  // Days can arrive while generation is still running (the backend streams
+  // each finished day). When at least one day is in, show the calendar
+  // instead of the spinner / error screen so the plan builds visibly.
+  const hasPartialPlan = !!mealPlan && mealPlan.mealPlan.length > 0;
+
+  if (isLoading && !hasPartialPlan) {
+    // No day has arrived yet: show the live progress panel (checklist +
+    // timer) instead of a bare spinner, so the wait is visible from the
+    // first second.
     return (
       <main className="main-panel main-panel--centered" data-tour="main-panel">
-        <div className="loading-state">
-          <div className="loading-spinner" />
-          <div className="loading-log">
-            {messageLog.length === 0 && (
-              <p className="loading-log__msg loading-log__msg--current" key="start">
-                Starting…
-              </p>
-            )}
-            {messageLog.map((msg, i) => (
-              <p
-                key={msg + i}
-                className={`loading-log__msg ${i === messageLog.length - 1 ? 'loading-log__msg--current' : 'loading-log__msg--past'}`}
-              >
-                {msg}
-              </p>
-            ))}
-          </div>
-        </div>
+        <GenerationProgress
+          startedAt={generationStartedAt}
+          plannedDays={plannedDays}
+          arrivedDates={arrivedDates}
+          progressMessage={progressMessage}
+        />
       </main>
     );
   }
 
-  if (error) {
+  // An error mid-stream keeps the days that already arrived visible; the
+  // banner below the header explains what happened instead of wiping them.
+  if (error && !hasPartialPlan) {
     return (
       <main className="main-panel main-panel--centered" data-tour="main-panel">
         <div className="error-state">
-          <p className="error-state__message">{error}</p>
-          <button className="btn-dismiss" onClick={clearError}>Dismiss</button>
+          <p className="error-state__message">{formatError(error)}</p>
+          <button className="btn-dismiss lenso-btn lenso-btn--glass" onClick={clearError}>Dismiss</button>
         </div>
       </main>
     );
@@ -121,7 +114,7 @@ export default function MealPlanView() {
         </div>
         <div className="calendar-header__actions">
           <button
-            className="calendar-header__shopping-btn"
+            className="calendar-header__shopping-btn lenso-btn lenso-btn--glass"
             onClick={() => setShowShoppingList(true)}
             disabled={shoppingCount === 0}
             data-tour="shopping-btn"
@@ -134,7 +127,7 @@ export default function MealPlanView() {
 
           <div className="export-menu-wrapper" ref={exportMenuRef}>
             <button
-              className="calendar-header__export-btn"
+              className="calendar-header__export-btn lenso-btn lenso-btn--glass"
               onClick={() => setShowExportMenu((v) => !v)}
             >
               Export PDF
@@ -142,17 +135,17 @@ export default function MealPlanView() {
             </button>
             {showExportMenu && (
               <div className="export-dropdown">
-                <button onClick={() => exportAnd(() => exportSchedulePDF(mealPlan, weekLabel))}>
+                <button className="lenso-btn lenso-btn--menu" onClick={() => exportAnd(() => exportSchedulePDF(mealPlan, weekLabel))}>
                   Weekly Schedule
                 </button>
-                <button onClick={() => exportAnd(() => exportShoppingListPDF(mealPlan, weekLabel))}>
+                <button className="lenso-btn lenso-btn--menu" onClick={() => exportAnd(() => exportShoppingListPDF(mealPlan, weekLabel))}>
                   Shopping List
                 </button>
-                <button onClick={() => exportAnd(() => exportAllRecipesPDF(mealPlan, weekLabel))}>
+                <button className="lenso-btn lenso-btn--menu" onClick={() => exportAnd(() => exportAllRecipesPDF(mealPlan, weekLabel))}>
                   All Recipes
                 </button>
                 <div className="export-dropdown__divider" />
-                <button onClick={() => exportAnd(() => exportFullPlanPDF(mealPlan, weekLabel))}>
+                <button className="lenso-btn lenso-btn--menu" onClick={() => exportAnd(() => exportFullPlanPDF(mealPlan, weekLabel))}>
                   Full Plan
                 </button>
               </div>
@@ -160,13 +153,29 @@ export default function MealPlanView() {
           </div>
 
           <button
-            className="calendar-header__export-btn"
+            className="calendar-header__export-btn lenso-btn lenso-btn--glass"
             onClick={() => exportToICS(mealPlan)}
           >
             Add to Calendar
           </button>
         </div>
       </div>
+
+      {isLoading && (
+        <GenerationProgress
+          compact
+          startedAt={generationStartedAt}
+          plannedDays={plannedDays}
+          arrivedDates={arrivedDates}
+          progressMessage={progressMessage}
+        />
+      )}
+      {error && (
+        <div className="error-banner" role="alert">
+          <p className="error-state__message">{formatError(error)}</p>
+          <button className="btn-dismiss lenso-btn lenso-btn--glass" onClick={clearError}>Dismiss</button>
+        </div>
+      )}
 
       <div className="calendar-wrapper">
         <div
@@ -185,10 +194,10 @@ export default function MealPlanView() {
             {selectionCount} meal{selectionCount > 1 ? 's' : ''} selected for replacement
           </span>
           <div className="regen-bar__actions">
-            <button className="regen-bar__cancel" onClick={clearRegenSelection}>
+            <button className="regen-bar__cancel lenso-btn lenso-btn--glass" onClick={clearRegenSelection}>
               Cancel
             </button>
-            <button className="regen-bar__confirm" onClick={regenerateSelected}>
+            <button className="regen-bar__confirm lenso-btn lenso-btn--prominent" onClick={regenerateSelected}>
               Regenerate
             </button>
           </div>

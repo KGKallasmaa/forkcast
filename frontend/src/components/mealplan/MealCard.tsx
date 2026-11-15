@@ -50,7 +50,7 @@ export default function MealCard({ meal, day }: Props) {
           </span>
           {canReplace && (
             <button
-              className={`meal-card__replace${isSelected ? ' meal-card__replace--active' : ''}`}
+              className={`meal-card__replace lenso-btn lenso-btn--text${isSelected ? ' meal-card__replace--active' : ''}`}
               onClick={(e) => { e.stopPropagation(); toggleRegenSelection(day, meal.mealType); }}
               aria-label={isSelected ? 'Deselect for replacement' : 'Select for replacement'}
               title={isSelected ? 'Click to deselect' : 'Replace this meal'}

@@ -32,6 +32,20 @@ export function formatError(raw: string | null | undefined): string {
   // JSON wrapper (RESOURCE_EXHAUSTED, 400) are visible to the rules too.
   const haystack = `${message} ${text}`.toLowerCase();
 
+  // Network failure — the request never reached the backend, so there is no
+  // status or provider error to interpret. On Render's free tier the backend
+  // sleeps after 15 minutes idle, so the first request after a pause can
+  // fail while it wakes up. Say that plainly instead of showing the raw
+  // browser error ("Failed to fetch").
+  if (
+    haystack.includes('failed to fetch') ||
+    haystack.includes('networkerror') ||
+    haystack.includes('network request failed') ||
+    haystack.includes('load failed')
+  ) {
+    return "Couldn't reach the server — it may be waking up after being idle. Wait a moment and try again.";
+  }
+
   // Daily quota (Gemini free tier: 20 requests/day per model).
   if (
     haystack.includes('resource_exhausted') ||

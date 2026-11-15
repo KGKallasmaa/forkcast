@@ -31,11 +31,29 @@ async function streamRequest<T>(
   // render days as they arrive. Regeneration never sends day events.
   onDay?: (day: DayPlan) => void
 ): Promise<T> {
-  const res = await fetch(`${BASE}/api/meal-plan`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  // The backend sleeps on Render's free tier after 15 minutes idle, so the
+  // first request after a pause can fail at the network level while it wakes
+  // up. Retry a network failure once after a short delay instead of failing
+  // the generation outright. Only network errors are retried — an HTTP
+  // response (429, 400, 500) is a real answer from the server and is handled
+  // below, not retried.
+  let res: Response;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(`${BASE}/api/meal-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      break;
+    } catch (err) {
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        continue;
+      }
+      throw err;
+    }
+  }
 
   if (res.status === 429) {
     const resetHeader = res.headers.get('RateLimit-Reset');

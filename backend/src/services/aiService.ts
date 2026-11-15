@@ -1,7 +1,14 @@
 import 'dotenv/config';
 import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
 import { enrichRecipes, mapWithLimit, timingLog, type RecipeSlot, type EnrichedRecipe } from './tavilyService.js';
 import { usageTracker } from './usageTracker.js';
+import {
+  DayMealSchema,
+  RegenMealSchema,
+  RecipeSlotSchema,
+  type LlmRecipe,
+} from './recipeSchema.js';
 
 // Fail fast with a clear message instead of an obscure error on the first request.
 const apiKey = process.env.GEMINI_API_KEY;
@@ -62,11 +69,19 @@ export interface MealPlanRequest {
   searchMode?: 'web' | 'training';
 }
 
-// What the generators return. The frontend builds the shopping list itself
-// (it needs the pantry), so `shoppingList` is only here to satisfy its type.
+// The recipe after the backend enriches it (source/image URLs from the
+// web pipeline, or the aiGenerated stamp from the training pipeline).
+// The zod schema validates the core LLM shape; these fields are added
+// after validation, so they are optional here.
+type ValidatedRecipe = LlmRecipe & {
+  sourceUrl?: string | null;
+  imageUrl?: string | null;
+  aiGenerated?: boolean;
+};
+
 interface DayMeal {
   mealType: string;
-  recipe: Record<string, unknown>;
+  recipe: ValidatedRecipe;
 }
 
 interface PlannedDay {
@@ -79,7 +94,7 @@ interface RegenMeal {
   day: string;
   date: string;
   mealType: string;
-  recipe: Record<string, unknown>;
+  recipe: ValidatedRecipe;
 }
 
 export interface MealPlanResult {
@@ -105,7 +120,7 @@ function getMealTypes(mealsPerDay: number): string[] {
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Works in UTC throughout so the server's timezone can't shift a date by a day.
-function getPlanDates(startDate?: string, numDays?: number) {
+export function getPlanDates(startDate?: string, numDays?: number) {
   const count = Math.min(Math.max(numDays ?? 7, 1), 7);
   const [y, m, d] = startDate ? startDate.split('-').map(Number) : [];
   const now = new Date();
@@ -140,7 +155,7 @@ function preferenceSummary(req: MealPlanRequest): string {
   ].filter(Boolean).join('\n');
 }
 
-function parseJSON(text: string): unknown {
+export function parseJSON(text: string): unknown {
   let t = text.trim();
 
   // Strip markdown code fences
@@ -213,6 +228,12 @@ if (!GROQ_API_KEY) {
   console.log('[chain] Groq link skipped — GROQ_API_KEY is not set. Set it to add the Groq model as the final backup.');
 }
 
+// A validation failure means the model returned well-formed JSON that
+// doesn't match the expected shape (bad macros, missing fields, absurd
+// values). The next link may do better, so treat it like a 503: advance
+// the chain instead of failing outright.
+const VALIDATION_FAILED = /validation failed/i;
+
 // Gemini answers 429 when you pass the free tier's rate limit and 503 when
 // the model is overloaded; Groq answers the same codes. Both pass, so wait
 // and advance to the next link. A 400 is fatal — the request itself is bad,
@@ -228,6 +249,7 @@ export type FailureKind = 'timeout' | '503' | '429' | 'fatal';
 // harness.
 export function classifyFailure(message: string): FailureKind {
   if (TIMEOUT.test(message)) return 'timeout';
+  if (VALIDATION_FAILED.test(message)) return '503';
   if (!RETRYABLE.test(message)) return 'fatal';
   return OVERLOADED.test(message) ? '503' : '429';
 }
@@ -409,21 +431,40 @@ export async function attemptChain(
 // that is the reasoning-heavy one (allergen/macro checks). The request is
 // tried against the model chain (see attemptChain); callers see the same
 // JSON shape whichever link answers.
+// `schema`, when given, validates the model's output before it reaches the
+// caller. Validation runs inside the chain's dispatch, so a bad recipe
+// throws here and attemptChain advances to the next link (classifyFailure
+// maps it to a 503) instead of an invalid recipe flowing into the plan.
 async function callGemini<T>(
   system: string,
   contents: string,
   maxOutputTokens: number,
-  opts: { thinkingOff?: boolean; label?: string } = {}
+  opts: { thinkingOff?: boolean; label?: string; schema?: z.ZodType } = {}
 ): Promise<T> {
   const label = opts.label ?? 'gemini';
   const startedAt = Date.now();
   try {
     const { text, attempts } = await attemptChain(
       CHAIN,
-      (link) => dispatchLink(link, system, contents, maxOutputTokens, opts, label),
+      async (link) => {
+        const raw = await dispatchLink(link, system, contents, maxOutputTokens, opts, label);
+        if (opts.schema) {
+          const parsed = parseJSON(raw);
+          const result = opts.schema.safeParse(parsed);
+          if (!result.success) {
+            const issues = result.error.issues
+              .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+              .join('; ');
+            throw new Error(`Recipe validation failed: ${issues}`);
+          }
+        }
+        return raw;
+      },
       label
     );
     timingLog(label, startedAt, ` (attempts: ${attempts})`);
+    // The dispatch above already validated this exact text when a schema
+    // was given, so this parse just returns the object.
     return parseJSON(text) as T;
   } catch (err) {
     console.log(`[timing] ${label}: FAILED — ${String(err).slice(0, 300)}`);
@@ -645,7 +686,7 @@ export async function generateMealPlan(
 
   // Phase 1 — Plan which recipes to use
   onProgress('Choosing recipes based on your preferences…');
-  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 3000, { label: 'planning' });
+  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 3000, { label: 'planning', schema: z.array(RecipeSlotSchema) });
   onProgress(`Selected ${slots.length} recipes — searching the web…`);
 
   // Phase 2 — Tavily search + extract for every recipe
@@ -668,7 +709,7 @@ export async function generateMealPlan(
       DAY_SYNTHESIS_SYSTEM,
       buildDaySynthesisMessage(req, d, dayEnriched),
       8000,
-      { thinkingOff: true, label: `day-synthesis ${d.day}` }
+      { thinkingOff: true, label: `day-synthesis ${d.day}`, schema: z.array(DayMealSchema) }
     );
     const dayPlan: PlannedDay = {
       day: d.day,
@@ -728,7 +769,7 @@ export async function regenerateMeals(
 
   // Phase 1 — Plan only the specified slots
   onProgress('Choosing replacement recipes…');
-  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 2000, { label: 'regen-planning' });
+  const slots = await callGemini<RecipeSlot[]>(PLANNING_SYSTEM, buildPlanningMessage(req), 2000, { label: 'regen-planning', schema: z.array(RecipeSlotSchema) });
   onProgress(`Selected ${slots.length} replacement recipe${slots.length === 1 ? '' : 's'} — searching the web…`);
 
   // Phase 2 — Tavily enrich those slots
@@ -740,7 +781,7 @@ export async function regenerateMeals(
     REGEN_SYNTHESIS_SYSTEM,
     buildRegenSynthesisMessage(req, enriched),
     8000,
-    { thinkingOff: true, label: 'regen-synthesis' }
+    { thinkingOff: true, label: 'regen-synthesis', schema: z.array(RegenMealSchema) }
   );
 
   return regenMeals.map((m) => {
@@ -822,7 +863,7 @@ ${perMealTargetsSection(req)}
 ${allergenGuardSection(req.dietary.allergens)}`;
 }
 
-function stampAiGenerated(recipe: Record<string, unknown>): Record<string, unknown> {
+function stampAiGenerated(recipe: LlmRecipe): ValidatedRecipe {
   return { ...recipe, sourceSite: 'Gemini', sourceUrl: null, imageUrl: null, aiGenerated: true };
 }
 
@@ -848,7 +889,7 @@ export async function generateMealPlanFromTraining(
       TRAINING_DAY_SYSTEM,
       buildTrainingDayMessage(req, d, pinnedByDay.get(d.day) ?? []),
       8000,
-      { thinkingOff: true, label: `day-synthesis ${d.day}` }
+      { thinkingOff: true, label: `day-synthesis ${d.day}`, schema: z.array(DayMealSchema) }
     );
     const dayPlan: PlannedDay = {
       day: d.day,
@@ -885,6 +926,6 @@ export async function regenerateMealsFromTraining(
   if (!req.slotsToGenerate?.length) throw new Error('No slots specified for regeneration');
 
   onProgress('Generating replacement recipes from training knowledge…');
-  const regenMeals = await callGemini<RegenMeal[]>(TRAINING_REGEN_SYSTEM, buildTrainingRegenMessage(req), 8000, { thinkingOff: true, label: 'training-regen-synthesis' });
+  const regenMeals = await callGemini<RegenMeal[]>(TRAINING_REGEN_SYSTEM, buildTrainingRegenMessage(req), 8000, { thinkingOff: true, label: 'training-regen-synthesis', schema: z.array(RegenMealSchema) });
   return regenMeals.map((m) => ({ ...m, recipe: stampAiGenerated(m.recipe) }));
 }

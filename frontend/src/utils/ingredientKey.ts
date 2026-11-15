@@ -45,11 +45,17 @@ const INGREDIENT_ALIASES: [RegExp, string][] = [
   [/\bshrimps?\b/g, 'prawn'],
   [/\bjalape[nñ]os?\b/g, 'jalapeno'],
   [/\b(?:powdered|icing)\s+sugar\b/g, 'confectioners sugar'],
-  [/\ball-purpose flour\b/g, 'plain flour'],
+  [/\ball[ -]purpose flour\b/g, 'plain flour'],
   [/\bheavy cream\b/g, 'heavy whipping cream'],
   [/\bstring beans?\b/g, 'green bean'],
   [/\bsnow peas?\b/g, 'mangetout'],
   [/\bromaine\b/g, 'cos lettuce'],
+  // Double-l British spelling: "chilli"/"chillies"/"chilly" must collapse
+  // to "chili" like the single-l forms do. Without this, "chillies"
+  // singularizes to "chilly" and "chilli" stays "chilli" — three keys for
+  // the same ingredient. Must run before the single-l chili pattern below
+  // (it doesn't match the double-l forms, but keep the order explicit).
+  [/\bchill(?:ies|i|y)\b/g, 'chili'],
   [/\bchil(?:i|e)s?\b/g, 'chili'],
 ];
 
@@ -82,6 +88,10 @@ export function cleanIngredientName(name: string): string {
 // retail-speak), hyphen-insensitive, quality-qualifier-insensitive, and
 // singular/plural-insensitive. Two ingredient names collapse to the same
 // shopping-list row (and the same pantry-match) iff this key matches.
+// Singularization is per-word, not just trailing: "tomatoes puree" must
+// collapse to the same key as "tomato puree" (singularize() only looks at
+// the end of the string it is given, so a plural that isn't the last word
+// would otherwise survive).
 export function canonicalIngredientKey(name: string): string {
   let n = baseClean(name);
   // Alias matching must run before hyphens are normalized away — some patterns
@@ -91,5 +101,5 @@ export function canonicalIngredientKey(name: string): string {
   for (const q of DROPPABLE_QUALIFIERS) {
     n = n.replace(new RegExp(`\\b${q}\\b\\s*`, 'g'), '').trim();
   }
-  return singularize(n);
+  return n.split(' ').map(singularize).join(' ');
 }

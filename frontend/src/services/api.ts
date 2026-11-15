@@ -31,12 +31,15 @@ async function streamRequest<T>(
   // render days as they arrive. Regeneration never sends day events.
   onDay?: (day: DayPlan) => void
 ): Promise<T> {
-  // The backend sleeps on Render's free tier after 15 minutes idle, so the
-  // first request after a pause can fail at the network level while it wakes
-  // up. Retry a network failure once after a short delay instead of failing
-  // the generation outright. Only network errors are retried — an HTTP
-  // response (429, 400, 500) is a real answer from the server and is handled
-  // below, not retried.
+  // The backend sleeps on Render's free tier after 15 minutes idle, and a
+  // wake-up takes 30–60s. The first request after a pause can fail at the
+  // network level while it wakes, so retry network failures with increasing
+  // delays (5s, 15s, 30s — about 50s of cover) instead of failing the
+  // generation outright. Only network errors are retried — an HTTP response
+  // (429, 400, 500) is a real answer from the server and is handled below,
+  // not retried. While waiting, tell the UI the server is waking so the
+  // user knows it is retrying rather than stuck.
+  const RETRY_DELAYS_MS = [5000, 15000, 30000];
   let res: Response;
   for (let attempt = 0; ; attempt++) {
     try {
@@ -47,11 +50,10 @@ async function streamRequest<T>(
       });
       break;
     } catch (err) {
-      if (attempt === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
-        continue;
-      }
-      throw err;
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay === undefined) throw err;
+      onProgress('Server is waking up, retrying…');
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 

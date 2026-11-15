@@ -2,6 +2,8 @@
 
 AI-powered meal planning web app, Generate a personalised multi-day meal plan, browse full recipes sourced from real cooking sites, track what's in your pantry, and turn the plan into a shopping checklist with one-click search links to Blinkit, BigBasket and Instamart.
 
+**Live demo:** [forkcast-frontend.onrender.com](https://forkcast-frontend.onrender.com)
+
 ## Features
 
 - **AI meal planning**: generate 1-7 days of meals starting on any date, with full recipe details (ingredients, steps, macros, source links)
@@ -15,6 +17,7 @@ AI-powered meal planning web app, Generate a personalised multi-day meal plan, b
 - **Recent recipes**: avoids repeating recent meals
 - **Pantry**: log what you already have. Pantry items are skipped when the shopping list is built
 - **Shopping list**: a combined ingredient checklist with quantity estimates. Each item has a search link for Blinkit, BigBasket or Instamart (you pick the retailer), a "Copy list" button, and a checked state that persists between visits
+- **Live progress**: days stream in as they're written, with a per-day checklist and a timer, so you can watch the plan come together instead of waiting on a spinner
 - **Dark and light mode**
 
 forkcast does not scrape retailers and does not use any cart API. The links just open the retailer's own search page for the item, in your own browser session.
@@ -47,10 +50,18 @@ Both modes apply to full-plan generation and to regenerating individual meals.
 
 ### Reliability
 
-- Gemini calls retry on rate limits (HTTP 429) and overloads (HTTP 503) with increasing waits
-- After a 503, the retry switches to a lighter fallback model
-- Days are generated sequentially to stay within free-tier rate limits
+- Days are generated in parallel (up to 3 at a time) and stream to the browser as each one finishes, so the plan appears day by day instead of all at once
+- Generation runs through a model chain — Gemini flash, then the faster lite model, then Groq — so a plan still completes when one model hits its daily quota or goes down
+- A daily-quota 429 fails fast and moves to the next model instead of burning retries on a quota that won't reset until tomorrow
+- Gemini calls retry on overloads (HTTP 503) with increasing waits, and each attempt has a timeout so a hung call can't stall the plan
+- Every generation attempt is counted per model per day, so you can see exactly how much of the free quota a plan used
 - Model output is parsed as JSON, and malformed or empty responses fail immediately instead of retrying
+
+### Performance
+
+- Day generation is **~95% faster**: a day of meals now takes **3.6–8.6s** on `gemini-3.5-flash-lite`, down from **93–167s** on `gemini-3.8-flash` (a 10–46× speedup). The win came from switching the primary model to lite, turning off thinking for synthesis calls, and synthesising days in parallel (concurrency 3) with SSE streaming so days render as they arrive.
+- A 2-day web plan completes in **~32s** end to end
+- The binding constraint is Gemini's **20 requests/day per-model quota**, not speed — the app fails fast on quota errors and falls through the model chain rather than retrying a limit that won't lift until tomorrow
 
 ### Shopping list
 
@@ -70,17 +81,19 @@ The generation endpoints are rate limited per IP to protect the AI quota. In pro
 ```
 forkcast/
   package.json            npm workspace root
+  render.yaml             Render Blueprint (backend + frontend)
+  DEPLOY.md               Deploy steps for Render
   frontend/               React + Vite app
     src/
       components/         UI (meal plan, modals, shared UI)
       stores/             Zustand stores (preferences, meal plan, pantry, usage)
       services/           API client and SSE streaming
-      utils/              date, ingredient and export helpers
+      utils/              date, ingredient, export and error helpers
   backend/                Express API
     src/
       index.ts            server, rate limiting, image proxy
       routes/             meal plan (streaming) and access routes
-      services/           aiService (Gemini) and tavilyService (Tavily)
+      services/           aiService (Gemini), tavilyService (Tavily), usageTracker
 ```
 
 ## Local development
@@ -134,7 +147,9 @@ npm run build -w frontend    # builds to frontend/dist
 npm run start -w backend     # runs the compiled backend
 ```
 
-In production, the backend serves the built frontend from `frontend/dist`, so one server hosts the whole app.
+## Deploy
+
+The repo ships a Render Blueprint (`render.yaml`): a Node web service for the backend and a static site for the frontend. See [DEPLOY.md](DEPLOY.md) for the steps — connect the repo, set `GEMINI_API_KEY` (and `GROQ_API_KEY` if you have one), and deploy. The frontend talks to the backend through `VITE_API_URL`. Free-tier services sleep after 15 minutes idle; the first visit takes ~30–60s to wake.
 
 ## Environment variables
 
@@ -145,6 +160,9 @@ In production, the backend serves the built frontend from `frontend/dist`, so on
 | `GEMINI_MODEL`          | No         | set in `aiService.ts`   | Main Gemini model                                                                                      |
 | `GEMINI_FALLBACK_MODEL` | No         | set in `aiService.ts`   | Lighter model used after a 503                                                                         |
 | `GEMINI_RETRY_MS`       | No         | `10000`                 | Base wait between retries (attempt n waits n x this)                                                   |
+| `GEMINI_TIMEOUT_MS`     | No         | `180000`                | Per-attempt timeout for generation calls                                                               |
+| `GROQ_API_KEY`          | No         | none                    | Groq API key — enables the Groq fallback link in the model chain                                       |
+| `GROQ_MODEL`            | No         | set in `aiService.ts`   | Groq model for the fallback link                                                                       |
 | `PORT`                  | No         | `3001`                  | Backend port                                                                                           |
 | `CORS_ORIGIN`           | No         | `http://localhost:5173` | Allowed CORS origin in development                                                                     |
 | `NODE_ENV`              | No         | none                    | Set to `production` to enable the strict rate limit                                                    |
@@ -154,7 +172,4 @@ In production, the backend serves the built frontend from `frontend/dist`, so on
 
 ## Roadmap
 
-- Frontend redesign
-- Free-tier deployment (single Node service serving both API and frontend)
-- Faster generation (parallel days, shorter model "thinking")
-- Validation of model output with a schema
+- Validation of model output with a schema (zod), plus tests for the date helpers and ingredient merging

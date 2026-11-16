@@ -289,11 +289,14 @@ export function thinkingConfigFor(model: string, thinkingOff?: boolean) {
 }
 
 // Groq, the final link in the chain. It speaks the OpenAI chat-completions
-// API, so plain fetch is enough — no SDK. response_format json_object asks
-// for JSON; choices[0].message.content is the JSON text, the same shape
-// callGemini returns to its callers, so no caller changes. thinkingConfig
-// is Gemini-only and is never sent here. Exported for the harness (it
-// drives this with a stubbed fetch).
+// API, so plain fetch is enough — no SDK. No response_format is sent:
+// every caller expects a top-level JSON ARRAY (the prompts say so), and
+// json_object mode rejects arrays — seen live 16 Nov 17:39, when Groq
+// answered 400 json_validate_failed with an empty-array failed_generation
+// after Gemini 503'd. The callers' parseJSON + zod validation already
+// handle fences/prose and reject bad shapes, so strict mode buys nothing
+// here. thinkingConfig is Gemini-only and is never sent here. Exported for
+// the harness (it drives this with a stubbed fetch).
 export async function callGroq(
   system: string,
   contents: string,
@@ -314,7 +317,6 @@ export async function callGroq(
           { role: 'system', content: system },
           { role: 'user', content: contents },
         ],
-        response_format: { type: 'json_object' },
         max_tokens: maxOutputTokens,
       }),
     }),

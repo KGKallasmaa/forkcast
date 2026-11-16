@@ -77,8 +77,12 @@ function mealPlanRateLimitKey(req: express.Request): string {
   return ipKeyGenerator(req.ip ?? '');
 }
 
+// Per-IP generations per 24h. The anonymous cap is deliberately low: the
+// backend's Gemini key is shared by every visitor and its free tier is
+// 20 requests/day per model, so a handful of anonymous users could burn
+// the shared quota before noon. Trusted (access-code) visitors get 10.
 function mealPlanLimit(req: express.Request): number {
-  return req.signedCookies?.[TRUSTED_COOKIE] ? 10 : isProd ? 2 : 1000;
+  return req.signedCookies?.[TRUSTED_COOKIE] ? 10 : isProd ? 5 : 1000;
 }
 
 const mealPlanStore = new MemoryStore();

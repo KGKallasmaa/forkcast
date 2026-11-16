@@ -28,14 +28,13 @@ services:
       - key: NODE_ENV
         value: production
       # The frontend origin, so the browser's cross-origin API calls are
-      # allowed. Set from the frontend service's host (a bare hostname);
-      # the backend prepends https:// (see index.ts), so this stays
-      # correct even if Render suffixes the frontend's hostname.
+      # allowed. Set as the full URL, not fromService: Render's fromService
+      # `host` returns just the service name ("forkcast-frontend"), which
+      # the backend turns into https://forkcast-frontend — a wrong origin
+      # the browser rejects, so every frontend API call fails with a
+      # network error even though the backend is up.
       - key: CORS_ORIGIN
-        fromService:
-          type: web
-          name: forkcast-frontend
-          property: host
+        value: https://forkcast-frontend.onrender.com
       # Fast model by default: the lite model is ~95% faster per day than
       # flash (3.6-8.6s vs 93-167s). Without this the backend defaults to
       # flash and a 7-day plan takes several minutes.

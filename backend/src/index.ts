@@ -213,4 +213,5 @@ if (existsSync(frontendDist)) {
 
 app.listen(PORT, () => {
   console.log(`forkcast backend running on http://localhost:${PORT}`);
+  console.log(`CORS origin: ${corsOrigin}`);
 });

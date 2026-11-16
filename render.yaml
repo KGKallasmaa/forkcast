@@ -60,10 +60,11 @@ services:
     buildCommand: npm install && npm install --no-save @rolldown/binding-linux-x64-gnu lightningcss-linux-x64-gnu && npm run build
     staticPublishPath: ./dist
     envVars:
-      # Build-time backend origin, from the backend service's host
-      # (a bare hostname, no scheme — the frontend prepends https://).
+      # Build-time backend origin. Set as the full URL, not fromService:
+      # Render's fromService `host` returns just the service name
+      # ("forkcast-backend-s16w"), which the frontend turns into
+      # https://forkcast-backend-s16w — a host that does not resolve, so
+      # every API call fails with a network error even though the backend
+      # is up. (Same quirk as CORS_ORIGIN above.)
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: forkcast-backend
-          property: host
+        value: https://forkcast-backend-s16w.onrender.com

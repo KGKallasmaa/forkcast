@@ -90,7 +90,7 @@ Counts are stored in memory on the backend, so a redeploy resets them.
 
 ## Roadmap
 
-- Accounts with auth and a database, so plans, pantry and preferences persist across devices and redeploys (currently everything lives in the browser and in-memory server state).
+- A database backend, so plans, pantry and preferences persist across devices and redeploys (currently everything lives in the browser and in-memory server state). Accounts stay optional, generating a plan never needs a login.
 - Saved and favourite recipes.
 - Plan history and sharing.
 

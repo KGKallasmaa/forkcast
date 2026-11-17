@@ -17,6 +17,9 @@ export interface Preferences {
         allergens: string[],
         isVegetarian: boolean,
         isVegan: boolean,
+        isNonVegetarian: boolean,
+        isHalal: boolean,
+        isKosher: boolean,
     }
     maxPrepTime: number,
     maxCookTime: number,
@@ -44,6 +47,9 @@ const defaults: Preferences = {
     allergens: [],
     isVegetarian: true,
     isVegan: false,
+    isNonVegetarian: false,
+    isHalal: false,
+    isKosher: false,
   },
   maxPrepTime: 30,
   maxCookTime: 60,
@@ -95,8 +101,20 @@ export const usePreferencesStore = create<PreferencesState>()(
       setMacro: (key, value) =>
         set((s) => ({ macros: { ...s.macros, [key]: value } })),
 
+      // Non-veg contradicts Vegetarian and Vegan: picking one clears the other.
+      // Halal and Kosher are independent — they combine with any of the three.
       setDietary: (key, value) =>
-        set((s) => ({ dietary: { ...s.dietary, [key]: value } })),
+        set((s) => {
+          const dietary = { ...s.dietary, [key]: value };
+          if (key === 'isNonVegetarian' && value === true) {
+            dietary.isVegetarian = false;
+            dietary.isVegan = false;
+          }
+          if ((key === 'isVegetarian' || key === 'isVegan') && value === true) {
+            dietary.isNonVegetarian = false;
+          }
+          return { dietary };
+        }),
 
       toggleCuisine: (cuisine) =>
         set((s) => ({

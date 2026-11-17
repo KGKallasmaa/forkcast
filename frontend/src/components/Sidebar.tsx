@@ -327,10 +327,13 @@ export default function Sidebar({ isOpen, onClose }: Props) {
           onChange={(v) => prefs.setDietary('maxSugar', v)}
         />
         <div className="checkbox-group checkbox-group--inline">
-          {(['isVegetarian', 'isVegan'] as const).map((key) => {
+          {(['isVegetarian', 'isVegan', 'isNonVegetarian', 'isHalal', 'isKosher'] as const).map((key) => {
             const labels: Record<string, string> = {
               isVegetarian: 'Vegetarian',
               isVegan: 'Vegan',
+              isNonVegetarian: 'Non-veg',
+              isHalal: 'Halal',
+              isKosher: 'Kosher',
             };
             return (
               <label key={key} className="checkbox-item">

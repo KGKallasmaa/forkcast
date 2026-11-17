@@ -51,7 +51,9 @@ export interface MealPlanRequest {
     allergens: string[];
     isVegetarian: boolean;
     isVegan: boolean;
-    isHalal?: boolean;   // optional: the frontend doesn't send these (yet)
+    // Optional: older clients may not send these.
+    isNonVegetarian?: boolean;
+    isHalal?: boolean;
     isKosher?: boolean;
     maxSugar: number;
   };
@@ -137,6 +139,7 @@ function preferenceSummary(req: MealPlanRequest): string {
   const dietaryFlags = [
     req.dietary.isVegan && 'Vegan',
     req.dietary.isVegetarian && !req.dietary.isVegan && 'Vegetarian',
+    req.dietary.isNonVegetarian && !req.dietary.isVegetarian && !req.dietary.isVegan && 'Non-vegetarian',
     req.dietary.isHalal && 'Halal',
     req.dietary.isKosher && 'Kosher',
   ].filter(Boolean);

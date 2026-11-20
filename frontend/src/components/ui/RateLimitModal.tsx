@@ -59,7 +59,7 @@ export default function RateLimitModal({ resetAt, onClose }: Props) {
               ) : (
                 <>
                   forkcastAI is a demo that uses paid AI APIs. You're in <strong>Demo Mode</strong>, limited to{' '}
-                  <strong>2 requests per day</strong>. Full Access — ask whoever shared this app with you —
+                  <strong>5 requests per day</strong>. Full Access — ask whoever shared this app with you —
                   raises that to 10/day and also unlocks Gemini-assisted shopping-list matching.
                 </>
               )}

@@ -139,7 +139,7 @@ export default function HowItWorksModal({ onClose }: Props) {
           <section className="help-modal__section">
             <h3 className="help-modal__section-title">Full Access &amp; Demo Mode</h3>
             <p className="how-it-works__intro">
-              By default the app runs in <strong>Demo Mode</strong>: 2 AI meal-plan generations per day, and the Gemini shopping
+              By default the app runs in <strong>Demo Mode</strong>: 5 AI meal-plan generations per day, and the Gemini shopping
               features above are locked (the automatic matching algorithm still works fully). Visiting the app via a{' '}
               <strong>Full Access</strong> link raises that to 10/day and unlocks the Gemini features.
             </p>

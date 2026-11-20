@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useMealPlanStore } from '../store/useMealPlanStore';
 import DayColumn from './mealplan/DayColumn';
 import GenerationProgress from './GenerationProgress';
+import HowItWorksNote from './HowItWorksNote';
 import ShoppingListModal from './ui/ShoppingListModal';
 import { formatError } from '../utils/formatError';
 import {
@@ -97,6 +98,7 @@ export default function MealPlanView() {
           <p className="empty-state__demo-note">
             No sign-up or API key needed — browse a ready-made 3-day plan.
           </p>
+          <HowItWorksNote />
         </div>
       </main>
     );

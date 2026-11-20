@@ -119,6 +119,24 @@ export interface FavoriteEntry {
 
 export const BLACKLIST_TTL_MS = 28 * 24 * 60 * 60 * 1000;
 
+// A saved plan older than this is dropped when the app opens, so the user
+// never sees last week's plan. A missing timestamp (plans saved before
+// this field existed) counts as stale.
+export const PLAN_TTL_MS = 24 * 60 * 60 * 1000;
+
+export function isPlanStale(savedAt: number | null | undefined, now = Date.now()): boolean {
+  return savedAt == null || now - savedAt > PLAN_TTL_MS;
+}
+
+// Drops shopping-list rows the user removed, by searchTerm. The list is
+// rebuilt from the plan in several places, so removals only stick if every
+// rebuild filters them out.
+export function withoutRemovedItems(list: ShoppingItem[], removed: string[]): ShoppingItem[] {
+  if (removed.length === 0) return list;
+  const gone = new Set(removed);
+  return list.filter((i) => !gone.has(i.searchTerm));
+}
+
 export function regenKey(day: string, mealType: string): string {
   return `${day}|||${mealType}`;
 }
@@ -145,12 +163,23 @@ interface MealPlanState {
   shoppingListStale: boolean;
   // searchTerms of shopping-list items the user has ticked off
   checkedItems: string[];
+  // When the current plan was saved. The plan is dropped on open once it
+  // is older than PLAN_TTL_MS.
+  planSavedAt: number | null;
+  // searchTerms of shopping-list rows the user removed. Kept across
+  // rebuilds so a removed row does not come back when the pantry changes
+  // or a meal is regenerated; cleared by a fresh plan or Clear.
+  removedShoppingTerms: string[];
 
   generate: () => Promise<void>;
   regenerateSelected: () => Promise<void>;
   // Loads the curated sample plan (Demo Mode). No backend call, no quota
   // used, no API keys needed.
   loadSamplePlan: () => void;
+  // Clears the current plan and shopping list (and their per-plan state).
+  // Favorites, blacklist and pinned favorites are the user's library and
+  // are kept.
+  clearPlan: () => void;
   addToBlacklist: (entries: { id: string; name: string }[]) => void;
   removeFromBlacklist: (id: string) => void;
   clearBlacklist: () => void;
@@ -164,6 +193,7 @@ interface MealPlanState {
   refreshShoppingList: () => void;
   toggleChecked: (searchTerm: string) => void;
   clearChecked: () => void;
+  removeShoppingItems: (terms: string[]) => void;
 }
 
 function buildPrefsPayload(
@@ -206,6 +236,8 @@ export const useMealPlanStore = create<MealPlanState>()(
       recentlyRegenerated: [],
       shoppingListStale: false,
       checkedItems: [],
+      planSavedAt: null,
+      removedShoppingTerms: [],
 
       loadSamplePlan: () => {
         // Demo Mode: a ready-made 3-day plan, loaded locally. No backend
@@ -226,8 +258,26 @@ export const useMealPlanStore = create<MealPlanState>()(
           generationStartedAt: null,
           plannedDays: [],
           checkedItems: [],
+          removedShoppingTerms: [],
+          planSavedAt: Date.now(),
         });
       },
+
+      clearPlan: () => set({
+        mealPlan: null,
+        isSample: false,
+        isLoading: false,
+        progressMessage: '',
+        error: null,
+        generationStartedAt: null,
+        plannedDays: [],
+        regenSelection: [],
+        recentlyRegenerated: [],
+        shoppingListStale: false,
+        checkedItems: [],
+        removedShoppingTerms: [],
+        planSavedAt: null,
+      }),
 
       generate: async () => {
         // Clear the old plan up front: days arriving below build a fresh
@@ -243,6 +293,8 @@ export const useMealPlanStore = create<MealPlanState>()(
           mealPlan: null,
           isSample: false,
           checkedItems: [],
+          removedShoppingTerms: [],
+          planSavedAt: null,
           generationStartedAt: Date.now(),
           plannedDays: getPlannedDays(prefs.startDate || todayISO(), prefs.numDays),
         });
@@ -283,6 +335,7 @@ export const useMealPlanStore = create<MealPlanState>()(
                 shoppingList: buildShoppingList(days, usePantryStore.getState().pantry),
               },
               isSample: false,
+              planSavedAt: Date.now(),
             });
           };
 
@@ -314,6 +367,7 @@ export const useMealPlanStore = create<MealPlanState>()(
             recentlyRegenerated: [],
             shoppingListStale: false,
             checkedItems: [],
+            planSavedAt: Date.now(),
           });
         } catch (err) {
           set({
@@ -412,7 +466,10 @@ export const useMealPlanStore = create<MealPlanState>()(
           const updatedPlan: MealPlan = {
             ...mealPlan,
             mealPlan: updatedDays,
-            shoppingList: buildShoppingList(updatedDays, usePantryStore.getState().pantry),
+            shoppingList: withoutRemovedItems(
+              buildShoppingList(updatedDays, usePantryStore.getState().pantry),
+              get().removedShoppingTerms
+            ),
           };
 
           // Blacklist the newly generated recipes
@@ -430,6 +487,7 @@ export const useMealPlanStore = create<MealPlanState>()(
             regenSelection: [],
             recentlyRegenerated: Array.from(new Set([...s.recentlyRegenerated, ...newlyRegeneratedKeys])),
             shoppingListStale: false,
+            planSavedAt: Date.now(),
           }));
         } catch (err) {
           set({
@@ -506,7 +564,10 @@ export const useMealPlanStore = create<MealPlanState>()(
         set({
           mealPlan: {
             ...mealPlan,
-            shoppingList: buildShoppingList(mealPlan.mealPlan, usePantryStore.getState().pantry),
+            shoppingList: withoutRemovedItems(
+              buildShoppingList(mealPlan.mealPlan, usePantryStore.getState().pantry),
+              get().removedShoppingTerms
+            ),
           },
           shoppingListStale: false,
         });
@@ -520,6 +581,21 @@ export const useMealPlanStore = create<MealPlanState>()(
         })),
 
       clearChecked: () => set({ checkedItems: [] }),
+
+      removeShoppingItems: (terms) =>
+        set((s) => {
+          const gone = new Set(terms);
+          return {
+            removedShoppingTerms: Array.from(new Set([...s.removedShoppingTerms, ...terms])),
+            checkedItems: s.checkedItems.filter((t) => !gone.has(t)),
+            mealPlan: s.mealPlan
+              ? {
+                  ...s.mealPlan,
+                  shoppingList: s.mealPlan.shoppingList.filter((i) => !gone.has(i.searchTerm)),
+                }
+              : null,
+          };
+        }),
     }),
     {
       name: 'forkcast-meal-plan',
@@ -530,9 +606,28 @@ export const useMealPlanStore = create<MealPlanState>()(
         favorites: s.favorites,
         pinnedFavoriteIds: s.pinnedFavoriteIds,
         checkedItems: s.checkedItems,
+        planSavedAt: s.planSavedAt,
+        removedShoppingTerms: s.removedShoppingTerms,
         // regenSelection, recentlyRegenerated, isLoading, error and
         // shoppingListStale are intentionally not persisted
       }),
+      onRehydrateStorage: () => (state) => {
+        // Drop a stale plan as soon as the stored state loads, so opening
+        // the app after 24h shows the empty state instead of last week's
+        // plan. Favorites, blacklist and pinned favorites are kept.
+        if (state?.mealPlan && isPlanStale(state.planSavedAt)) {
+          useMealPlanStore.setState({
+            mealPlan: null,
+            isSample: false,
+            checkedItems: [],
+            removedShoppingTerms: [],
+            planSavedAt: null,
+            regenSelection: [],
+            recentlyRegenerated: [],
+            shoppingListStale: false,
+          });
+        }
+      },
     }
   )
 );

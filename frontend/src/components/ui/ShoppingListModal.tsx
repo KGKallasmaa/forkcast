@@ -37,6 +37,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
   const items = useMealPlanStore((s) => s.mealPlan?.shoppingList ?? []);
   const checkedItems = useMealPlanStore((s) => s.checkedItems);
   const toggleChecked = useMealPlanStore((s) => s.toggleChecked);
+  const removeShoppingItems = useMealPlanStore((s) => s.removeShoppingItems);
   const pantry = usePantryStore((s) => s.pantry);
   const addToPantry = usePantryStore((s) => s.addToPantry);
   const removeFromPantry = usePantryStore((s) => s.removeFromPantry);
@@ -44,6 +45,10 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
   const [sort, setSort] = useState<SortKey>('alpha-asc');
   const [retailer, setRetailer] = useState<Retailer>('blinkit');
   const [copied, setCopied] = useState(false);
+  // Selection mode for removing rows: a separate selection from the
+  // bought checkboxes, so the two never get confused.
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -94,11 +99,40 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
   // ── Actions ────────────────────────────────────────────────────────────────
 
   function toggleAll() {
+    if (selecting) {
+      // Selection mode: select or deselect every to-buy row for removal.
+      // Pantry rows are not selectable — they are already owned.
+      setSelected((prev) =>
+        prev.size === nonPantryItems.length
+          ? new Set()
+          : new Set(nonPantryItems.map((i) => i.searchTerm))
+      );
+      return;
+    }
     // Every non-pantry row already checked -> uncheck them all; otherwise check them all.
     for (const item of nonPantryItems) {
       const isChecked = checkedSet.has(item.searchTerm);
       if (allNonPantryChecked === isChecked) toggleChecked(item.searchTerm);
     }
+  }
+
+  function toggleSelect(searchTerm: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(searchTerm)) next.delete(searchTerm);
+      else next.add(searchTerm);
+      return next;
+    });
+  }
+
+  function exitSelecting() {
+    setSelecting(false);
+    setSelected(new Set());
+  }
+
+  function removeSelected() {
+    removeShoppingItems([...selected]);
+    exitSelecting();
   }
 
   function moveToList(item: ShoppingItem) {
@@ -134,7 +168,9 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
           <div className="modal__title-group">
             <h2 className="modal__title">Shopping List</h2>
             <p className="modal__subtitle">
-              {nonPantryItems.length} to buy · {remaining.length} remaining
+              {selecting
+                ? `${selected.size} selected`
+                : `${nonPantryItems.length} to buy · ${remaining.length} remaining`}
             </p>
           </div>
           <button className="modal__close lenso-btn lenso-btn--icon" onClick={onClose} aria-label="Close">✕</button>
@@ -143,8 +179,15 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
         <div className="shopping-modal__body">
           <div className="shopping-modal__controls">
             <button className="shopping-list__toggle-all lenso-btn lenso-btn--text" onClick={toggleAll} disabled={nonPantryItems.length === 0}>
-              {allNonPantryChecked ? 'Deselect all' : 'Select all'}
+              {selecting
+                ? (selected.size === nonPantryItems.length ? 'Deselect all' : 'Select all')
+                : (allNonPantryChecked ? 'Deselect all' : 'Select all')}
             </button>
+            {!selecting && (
+              <button className="shopping-list__toggle-all lenso-btn lenso-btn--text" onClick={() => setSelecting(true)} disabled={nonPantryItems.length === 0}>
+                Select to remove
+              </button>
+            )}
             <div className="shopping-modal__selects">
               <label className="shopping-modal__select-label">
                 Sort
@@ -173,6 +216,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
               const sectionLabel = status !== prevStatus ? SECTION_LABEL[status] : null;
               const isChecked = status === 'checked';
               const isPantry = status === 'pantry';
+              const isSelected = selecting && selected.has(item.searchTerm);
               return (
                 // The key must sit on the outermost element of the map.
                 <Fragment key={item.displayName}>
@@ -182,21 +226,21 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
                     </li>
                   )}
                   <li
-                    className={`shopping-item${isChecked ? ' shopping-item--checked' : ''}${isPantry ? ' shopping-item--pantry' : ''}`}
-                    onClick={isPantry ? undefined : () => toggleChecked(item.searchTerm)}
+                    className={`shopping-item${isChecked ? ' shopping-item--checked' : ''}${isPantry ? ' shopping-item--pantry' : ''}${isSelected ? ' shopping-item--selected' : ''}`}
+                    onClick={isPantry ? undefined : (selecting ? () => toggleSelect(item.searchTerm) : () => toggleChecked(item.searchTerm))}
                   >
                     <input
                       type="checkbox"
                       className="shopping-item__native-checkbox"
-                      checked={isChecked}
+                      checked={selecting ? isSelected : isChecked}
                       disabled={isPantry}
-                      onChange={() => toggleChecked(item.searchTerm)}
+                      onChange={selecting ? () => toggleSelect(item.searchTerm) : () => toggleChecked(item.searchTerm)}
                       onClick={(e) => e.stopPropagation()}
-                      aria-label={`Mark ${item.displayName} as bought`}
+                      aria-label={selecting ? `Select ${item.displayName} for removal` : `Mark ${item.displayName} as bought`}
                     />
                     <span className="shopping-item__name-group">
                       <span className="shopping-item__name">{item.displayName}</span>
-                      {status === 'todo' ? (
+                      {!selecting && (status === 'todo' ? (
                         <button
                           className="shopping-item__move-btn lenso-btn lenso-btn--icon"
                           onClick={(e) => { e.stopPropagation(); moveToPantry(item); }}
@@ -212,7 +256,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
                         >
                           → List
                         </button>
-                      )}
+                      ))}
                     </span>
                     <span className="shopping-item__qty">{item.estimatedQuantity}</span>
                     {item.usedIn.length > 0 && (
@@ -220,7 +264,7 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
                         {item.usedIn.length === 1 ? item.usedIn[0] : `${item.usedIn.length} recipes`}
                       </span>
                     )}
-                    {!isPantry && (
+                    {!selecting && !isPantry && (
                       <a
                         className="shopping-item__buy"
                         href={SEARCH_URL[retailer](item.searchTerm)}
@@ -240,10 +284,23 @@ export default function ShoppingListModal({ onClose }: { onClose: () => void }) 
 
         <div className="shopping-modal__footer">
           <div className="shopping-modal__footer-actions">
-            <button className="btn-secondary lenso-btn lenso-btn--glass" onClick={copyList} disabled={remaining.length === 0}>
-              {copied ? 'Copied ✓' : 'Copy list'}
-            </button>
-            <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={onClose}>Done</button>
+            {selecting ? (
+              <>
+                <button className="btn-secondary lenso-btn lenso-btn--glass" onClick={exitSelecting}>
+                  Cancel
+                </button>
+                <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={removeSelected} disabled={selected.size === 0}>
+                  Remove selected{selected.size > 0 ? ` (${selected.size})` : ''}
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn-secondary lenso-btn lenso-btn--glass" onClick={copyList} disabled={remaining.length === 0}>
+                  {copied ? 'Copied ✓' : 'Copy list'}
+                </button>
+                <button className="btn-primary lenso-btn lenso-btn--prominent" onClick={onClose}>Done</button>
+              </>
+            )}
           </div>
         </div>
       </div>

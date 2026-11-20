@@ -518,6 +518,30 @@ button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+/* Footer row at the bottom of the plan, right-aligned: the Clear button
+   lives here, not under Generate. Two-tap confirm, so a stray tap cannot
+   wipe the plan. */
+.main-panel__footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.main-panel__clear-btn {
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.main-panel__clear-btn:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.main-panel__clear-btn--confirm { color: var(--accent); font-weight: 600; }
+.main-panel__clear-btn--confirm:hover { color: var(--accent-hover); }
+
 /* ── Mode toggle (segmented control) ──
    A proper segmented control: plain text options, and the active
    option as a raised white pill with accent text and a soft shadow
@@ -2134,6 +2158,7 @@ button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
 .shopping-item--checked { opacity: 0.5; }
 .shopping-item--checked .shopping-item__name { text-decoration: line-through; }
 .shopping-item--pantry { opacity: 0.65; }
+.shopping-item--selected { background: rgba(206, 74, 53, 0.08); }
 
 /* Custom checkbox — the same treatment as the sidebar's
    .checkbox-item input[type='checkbox'] (14px, 1px border, 3px radius,

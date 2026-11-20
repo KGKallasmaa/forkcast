@@ -28,12 +28,19 @@ export default function MealPlanView() {
   const {
     mealPlan, isLoading, progressMessage, error, clearError,
     generationStartedAt, plannedDays, isSample, loadSamplePlan,
-    regenSelection, regenerateSelected, clearRegenSelection,
+    regenSelection, regenerateSelected, clearRegenSelection, clearPlan,
   } = useMealPlanStore();
 
   const [showShoppingList, setShowShoppingList] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Two-tap confirm for clearing the plan, so a stray tap cannot wipe it.
+  // The confirm resets if the button loses focus or the plan goes away.
+  const [confirmClear, setConfirmClear] = useState(false);
+  useEffect(() => {
+    if (!mealPlan) setConfirmClear(false);
+  }, [mealPlan]);
 
   // Dates of the days that have already arrived, for the progress panel.
   const arrivedDates = (mealPlan?.mealPlan ?? []).map((d) => d.date);
@@ -214,6 +221,25 @@ export default function MealPlanView() {
           </div>
         </div>
       )}
+
+      <div className="main-panel__footer">
+        <button
+          type="button"
+          className={`main-panel__clear-btn${confirmClear ? ' main-panel__clear-btn--confirm' : ''}`}
+          onClick={() => {
+            if (confirmClear) {
+              clearPlan();
+              setConfirmClear(false);
+            } else {
+              setConfirmClear(true);
+            }
+          }}
+          onBlur={() => setConfirmClear(false)}
+          title="Clears the current meal plan and shopping list. Your favorites, pantry and preferences are kept."
+        >
+          {confirmClear ? 'Tap again to clear everything' : 'Clear everything'}
+        </button>
+      </div>
 
       {showShoppingList && (
         <ShoppingListModal

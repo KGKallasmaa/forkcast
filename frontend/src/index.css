@@ -839,7 +839,13 @@ button.lenso-btn.theme-toggle--dark:hover:not(:disabled) {
 /* ── Main panel variants ── */
 .main-panel--centered {
   align-items: center;
-  justify-content: center;
+  /* safe center, not plain center: when the content is taller than the
+     panel (the empty state with the How it Works note is), plain center
+     pushes the top of it above the scroll origin, so the top rows slide
+     under the navbar and can never be scrolled back into view. safe
+     centers only when it fits and top-aligns when it overflows, so the
+     top stays reachable. */
+  justify-content: safe center;
 }
 
 /* ── Loading state ── */

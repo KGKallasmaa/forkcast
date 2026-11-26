@@ -69,6 +69,7 @@ The backend runs on `http://localhost:3000` and the frontend on Vite's dev serve
 | `GEMINI_API_KEY` | Backend | Yes, for AI generation |
 | `GROQ_API_KEY` | Backend | For the fallback model |
 | `TAVILY_API_KEY` | Backend | For Web Search mode only |
+| `KEENABLE_API_KEY` / `KEENABLE_KEYLESS` | Backend | Optional Web Search fallback when no Tavily key is set |
 | `VITE_API_URL` | Frontend | Yes, full backend URL |
 | `CORS_ORIGIN` | Backend | Yes, full frontend URL |
 

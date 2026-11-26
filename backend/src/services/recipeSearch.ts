@@ -50,26 +50,26 @@ export function normalizeDomain(site: string): string {
     .split('/')[0] ?? '';
 }
 
-function isOn(value: string | undefined): boolean {
-  return ['1', 'true', 'yes', 'on'].includes((value ?? '').trim().toLowerCase());
+function isOff(value: string | undefined): boolean {
+  return ['0', 'false', 'no', 'off'].includes((value ?? '').trim().toLowerCase());
 }
 
 // Built only when Web Search mode runs. Tavily whenever TAVILY_API_KEY is set;
-// otherwise Keenable as the fallback plug, with KEENABLE_API_KEY or, if the
-// user opts in with KEENABLE_KEYLESS=true, the keyless endpoints. null when
-// nothing is configured (AI Generated mode never needs a provider).
+// otherwise Keenable as the fallback plug, with KEENABLE_API_KEY or, by default,
+// the keyless endpoints. Set KEENABLE_KEYLESS=false to opt out. null only
+// when the user has opted out (AI Generated mode never needs a provider).
 export function getSearchProvider(env: NodeJS.ProcessEnv = process.env): SearchProvider | null {
   const tavilyKey = env.TAVILY_API_KEY?.trim();
   if (tavilyKey) return createTavilyProvider(tavilyKey);
   const keenableKey = env.KEENABLE_API_KEY?.trim();
   if (keenableKey) return createKeenableProvider({ apiKey: keenableKey });
-  if (isOn(env.KEENABLE_KEYLESS)) return createKeenableProvider({});
+  if (!isOff(env.KEENABLE_KEYLESS)) return createKeenableProvider({});
   return null;
 }
 
 export const NO_PROVIDER_MESSAGE =
-  'Web Search mode needs a search provider: set TAVILY_API_KEY, or KEENABLE_API_KEY ' +
-  '(or KEENABLE_KEYLESS=true for Keenable without a key). See backend/.env.example.';
+  'Web Search mode has no search provider: set TAVILY_API_KEY or KEENABLE_API_KEY, ' +
+  'or leave KEENABLE_KEYLESS at its default. See backend/.env.example.';
 
 export function requireSearchProvider(env: NodeJS.ProcessEnv = process.env): SearchProvider {
   const provider = getSearchProvider(env);

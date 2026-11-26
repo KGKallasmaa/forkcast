@@ -1,6 +1,6 @@
 // Keenable adapter (https://docs.keenable.ai/api-reference/search), the
 // fallback plug when TAVILY_API_KEY is not set. Keyed with KEENABLE_API_KEY;
-// the keyless endpoints are used only when the user sets KEENABLE_KEYLESS=true.
+// otherwise the keyless endpoints are used by default (opt out with KEENABLE_KEYLESS=false).
 // Keyless requests are rate limited per IP (docs.keenable.ai/rate-limits).
 // Keyed and keyless requests are both logged under Keenable's default data
 // policy; only Enterprise zero data retention differs (docs.keenable.ai/data-privacy).

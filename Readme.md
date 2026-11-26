@@ -116,7 +116,7 @@ forkcast/
 
 - Node.js 22+
 - A [Google AI Studio](https://aistudio.google.com) API key (free tier is enough)
-- For Web Search mode only: a [Tavily](https://tavily.com) API key, or [Keenable](https://docs.keenable.ai) as the fallback (`KEENABLE_API_KEY`, or `KEENABLE_KEYLESS=true` without a key)
+- For Web Search mode only: a [Tavily](https://tavily.com) API key, or the [Keenable](https://docs.keenable.ai) fallback (keyed with `KEENABLE_API_KEY`, or keyless by default; set `KEENABLE_KEYLESS=false` to opt out)
 
 ### Setup
 
@@ -172,7 +172,7 @@ The repo ships a Render Blueprint (`render.yaml`): a Node web service for the ba
 | `GEMINI_API_KEY`        | Yes        | none                    | Google Gemini API key                                                                                  |
 | `TAVILY_API_KEY`        | No         | none                    | Tavily search and extract API key. Web Search mode uses Tavily whenever it is set                      |
 | `KEENABLE_API_KEY`      | No         | none                    | Keenable key, the Web Search fallback when no Tavily key is set                                        |
-| `KEENABLE_KEYLESS`      | No         | `false`                 | `true` lets the Keenable fallback run without a key (rate limited per IP; requests are logged)         |
+| `KEENABLE_KEYLESS`      | No         | on (no Tavily key)      | `false` turns off the keyless Keenable fallback. Rate limited per IP; keyed and keyless requests are both logged under the default policy (docs.keenable.ai/data-privacy) |
 | `GEMINI_MODEL`          | No         | set in `aiService.ts`   | Main Gemini model                                                                                      |
 | `GEMINI_FALLBACK_MODEL` | No         | set in `aiService.ts`   | Lighter model used after a 503                                                                         |
 | `GEMINI_RETRY_MS`       | No         | `10000`                 | Base wait between retries (attempt n waits n x this)                                                   |

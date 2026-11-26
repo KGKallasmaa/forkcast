@@ -44,9 +44,9 @@ function fakeFetch(responses: { status: number; body: unknown }[]) {
 }
 
 describe('getSearchProvider', () => {
-  it('returns null with no keys, so the backend still starts', () => {
-    assert.equal(getSearchProvider({}), null);
-    assert.throws(() => requireSearchProvider({}), /TAVILY_API_KEY, or KEENABLE_API_KEY/);
+  it('falls back to keyless Keenable with no keys, so a fresh clone can use Web Search', () => {
+    assert.equal(getSearchProvider({})?.name, 'Keenable');
+    assert.equal(requireSearchProvider({}).name, 'Keenable');
   });
   it('prefers Tavily whenever TAVILY_API_KEY is set', () => {
     assert.equal(getSearchProvider({ TAVILY_API_KEY: 't', KEENABLE_API_KEY: 'k' })?.name, 'Tavily');
@@ -56,8 +56,9 @@ describe('getSearchProvider', () => {
     assert.equal(p?.name, 'Keenable');
     assert.match(p?.failureHint ?? '', /KEENABLE_API_KEY/);
   });
-  it('uses keyless Keenable only when KEENABLE_KEYLESS opts in', () => {
+  it('opts out of keyless Keenable when KEENABLE_KEYLESS is false', () => {
     assert.equal(getSearchProvider({ KEENABLE_KEYLESS: 'false' }), null);
+    assert.throws(() => requireSearchProvider({ KEENABLE_KEYLESS: 'false' }), /KEENABLE_KEYLESS/);
     assert.equal(getSearchProvider({ KEENABLE_KEYLESS: 'true' })?.name, 'Keenable');
   });
 });

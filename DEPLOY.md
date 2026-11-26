@@ -29,8 +29,8 @@ service's host with `fromService`, so no code change is needed.
    - `GEMINI_API_KEY` — **required**. Meal generation does not work without it.
    - `TAVILY_API_KEY` — for Web Search mode. Without it the backend still
      starts and AI Generated mode works; Web Search then falls back to
-     Keenable if `KEENABLE_API_KEY` (or `KEENABLE_KEYLESS=true`) is set, and
-     otherwise reports that no search provider is configured.
+     Keenable (`KEENABLE_API_KEY`, or the keyless endpoints by default).
+     Set `KEENABLE_KEYLESS=false` to opt out of the keyless fallback.
    - `GROQ_API_KEY` — optional. Only for the Groq fallback link in the
      model chain; the app runs fine without it (that link is skipped).
    Save — Render redeploys the backend.
